@@ -1,0 +1,63 @@
+@ COPYRIGHT Command Prompt, Inc.
+
+pitr_tools is a suite of utilities to make point in time easier. It uses a
+push mechanism  for updating archives.
+
+Dependencies:
+
+ key based ssh auth between the master and slave (both ways)
+
+To enable, one must edit the postgresql.conf.
+
+archive_mode = on		# allows archiving to be done
+archive_command = 'bin/archiver -c etc/archiver.ini -f %p'
+
+-c takes the path to the config file
+-f takes the path (or file) of the archive. 
+
+The archiver.ini file contains a variety of options. 
+
+state: online | offline
+
+If state is online, postgresql will attempt to copy either to
+r_archivedir or l_archivedir based on whether or not your protocol is
+scp (r_archivedir) or file (l_archivedir).
+
+If state is offline, postgresql will queue archive files until you mark the
+archiver online again. This can fill up your pg_xlogs so watch for that.
+
+The r_archivedir is the directory on the remote machine in which the
+master will copy its archive logs. If this process fails, the archiver
+will throw notify_critical. This option is only useful if protocol is of
+scp.
+
+The l_archivedir is the directory on the local machine in which the
+master will copy its archive files if protocol is set to file. This
+could be because the archive directory is NFS mounted or perhaps you
+have a local duplicate of your database (for some reason). If this
+process fails the archiver will throw notify_critical. This option is only
+useful if protocol is of file.
+
+The protocol is one of scp or file. 
+
+The slave is the ip address (name) of the remote machine.
+The user is the user who is performing the ssh key based auth, e.g; scp
+foo postgres@slave.com:
+
+The timeout is the amount of second scp will wait before it gets a
+timeout and errors. If this happens we throw a notify_critical. However
+PostgreSQL will not throw away the archive. It will continue to try to
+deliver the archive until it is successful or you set the protocol to file
+in which case it will begin copying locally.
+
+If notify_ok is set, we will use notify_ok on the proper copy of each
+file.
+
+notify_critical: echo "We have failed" ; command to process in critical
+
+notify_ok, notify_warning and notify_critical are arbitrary shell commands
+that are defined in the archiver.ini. This allows you to alert nagios for
+example.
+
+
+

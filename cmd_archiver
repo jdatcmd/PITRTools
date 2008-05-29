@@ -1,0 +1,92 @@
+#!/usr/bin/env python
+
+from ConfigParser import *
+from os import *
+from sys import *
+from optparse import OptionParser
+
+# Initiate command line switches
+
+usage = "usage: %prog [options] arg1 arg2"
+parser = OptionParser(usage=usage)
+parser.add_option("-f", "--file", dest="archivefilename", action="store", help="Archive file", metavar="FILE")
+parser.add_option("-c", "--config", dest="configfilename", action="store",  help="the name of the archiver config file", metavar="FILE")
+(options, args) = parser.parse_args()
+
+archivefile = options.archivefilename
+configfile = options.configfilename
+
+# both -c and -f are required
+
+if (archivefile == None or configfile == None):
+   parser.error("options -f and -c are required")
+   print "\n"   
+
+# initiate config parser 
+config = ConfigParser()
+config.read(configfile)
+
+# Set up our keys
+state = config.defaults()['state']
+scp_bin = config.defaults()['scp_bin']
+rsync_bin = config.defaults()['rsync_bin']
+protocol = config.defaults()['protocol']
+slave = config.defaults()['slave']
+user = config.defaults()['user']
+r_archivedir = config.defaults()['r_archivedir']
+l_archivedir = config.defaults()['l_archivedir']
+timeout = config.defaults()['timeout']
+notify_ok = config.defaults()['notify_ok']
+notify_warning = config.defaults()['notify_warning']
+notify_critical = config.defaults()['notify_critical']
+debug = config.defaults()['debug']
+
+if debug == 'on':
+   print config.defaults().keys()
+   
+# set up our transfer commands
+
+if debug == 'on':
+   scp_flags = "-vvv -o ConnectTimeout=%s -o StrictHostKeyChecking=no" % (str(timeout))
+else:
+   scp_flags = "-o ConnectTimeout=%s -o StrictHostKeyChecking=no" % (str(timeout))
+
+scp_transfer = "%s %s %s %s@%s:%s" % (str(scp_bin), str(scp_flags), str(archivefile), str(user), str(slave), str(r_archivedir))
+rsync_transfer = """%s -e "ssh %s" %s %s@%s:%s""" % (str(rsync_bin), str(scp_flags), str(archivefile), str(user), str(slave), str(r_archivedir))
+file_transfer = "cp %s %s" % (str(archivefile),str(l_archivedir))
+
+if state == 'online':
+   if protocol == 'scp':
+      if debug == 'on':
+         print "SSH: %s " % (scp_transfer)
+      retval = system("%s" % (scp_transfer))
+      if retval:
+         retval = system("%s %d" % (str(notify_critical), retval))
+         print "Bailing out! Critical Error"
+      else:
+         retval = system("%s" % (str(notify_ok)))
+   if protocol == 'rsync':
+      if debug == 'on':
+         print "RSYNC: %s " % (rsync_transfer)
+      retval = system("%s" % (rsync_transfer))
+      if retval:
+         retval = system("%s %d" % (str(notify_critical), retval))
+         print "Bailing out! Critical Error"
+      else:
+         retval = system("%s" % (str(notify_ok)))
+   elif protocol == 'file':
+      if debug == 'on':
+         print "FILE: %s" % (file_transfer)
+      retval = system("%s" % (file_transfer))
+      if retval:
+         retval = system("%s %d" % (str(notify_critical), retval))
+         print "Unable to copy file %s to %s : %d" % (str(archivefile), str(l_archivedir), retval) 
+      else:
+         retval = system("%s" % (str(notify_ok)))
+elif state == 'offline':
+   print "ARCHIVER: We are offline, queuing archives"
+   system("%s" % (str(notify_warning)))
+   exit(1)
+else:
+   print "I must either be online or offline. There is no NULL here"
+   exit(1)
