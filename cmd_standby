@@ -147,7 +147,10 @@ else:
 ssh_connect = """%s %s %s@%s""" % (str(ssh), str(ssh_flags), str(user),str(master_public_ip))
 
 # Yes the odd counted " is needed because of the way we have to quote within the command
-psql_connect =  """ "%s -A -t -U%s -h%s -p%s -dpostgres """ % (str(psql), str(user), str(master_local_ip), str(port))
+if not master_local_ip:
+   psql_connect =  """ "%s -A -t -U%s -p%s -dpostgres """ % (str(psql), str(user), str(port))
+else:
+   psql_connect =  """ "%s -A -t -U%s -h%s -p%s -dpostgres """ % (str(psql), str(user), str(master_local_ip), str(port))
 copy_dirs = "%s %s --exclude=pg_log/ --exclude=postgresql.conf --exclude=pg_hba.conf --exclude=postmaster.pid -e ssh %s@%s:" % (str(rsync), str(rsync_flags), str(user), str(master_public_ip))
 ssh_psql = ssh_connect + psql_connect
 
