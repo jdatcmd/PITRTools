@@ -186,6 +186,12 @@ def get_datadirs_func():
    return paths.readlines()
 
 def start_backup_func():
+   query = """ 'checkpoint' """
+   retval = system("%s -c %s\"" % (str(ssh_psql),str(query)))   
+   if retval:
+      print "Unable to start base backup"
+      notify_critical_func()
+      exit(1)
    query = """ 'SELECT cmd_pg_start_backup()' """
    retval = system("%s -c %s\"" % (str(ssh_psql),str(query)))   
    if retval:
