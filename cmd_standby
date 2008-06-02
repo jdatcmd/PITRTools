@@ -182,7 +182,7 @@ def get_datadirs_func():
       query = """'SELECT * FROM cmd_get_data_dirs()'"""
       paths = os.popen("%s -c %s\"" % (str(ssh_psql),str(query)))
       if debug == 'on':    
-         print cmd + "\n"
+         print paths + "\n"
    return paths.readlines()
 
 def start_backup_func():
