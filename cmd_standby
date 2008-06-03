@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.5
+#!/usr/bin/python
 #
 #
 # cmd_standby copyright command prompt inc
@@ -89,6 +89,10 @@ def check_config_func():
          print "Config %s:  %s" % (str(element),str(e))
          exit(1)
 
+#
+# Check if our pg_xlog is a link or directory and react accordingly
+#
+
 def check_pgxlog_path_func():
    pg_xlog_dir = """%s/%s""" % (str(pgdata),str('pg_xlog'))
    pg_xlog_realpath = os.path.realpath(pg_xlog_dir) 
@@ -147,6 +151,8 @@ else:
 ssh_connect = """%s %s %s@%s""" % (str(ssh), str(ssh_flags), str(user),str(master_public_ip))
 
 # Yes the odd counted " is needed because of the way we have to quote within the command
+# There may be a better way to do this, but I got tired of fighting.
+
 if not master_local_ip:
    psql_connect =  """ "%s -A -t -U%s -p%s -dpostgres """ % (str(psql), str(user), str(port))
 else:
@@ -154,7 +160,8 @@ else:
 copy_dirs = "%s %s --exclude=pg_log/ --exclude=postgresql.conf --exclude=pg_hba.conf --exclude=postmaster.pid -e ssh %s@%s:" % (str(rsync), str(rsync_flags), str(user), str(master_public_ip))
 ssh_psql = ssh_connect + psql_connect
 
-# Recovery string
+
+# Recovery string for recovery.conf
 recovery_file = """%s/recovery.conf""" % (str(pgdata))
 
 if failover == '999' and not recovertotime:
@@ -164,6 +171,7 @@ elif failover == '999' and recovertotime:
 else:
    recovery_string = """restore_command = '%s  %s %s' """ % (str(pg_standby), str(archivedir), str(pg_standby_flags))
 
+# Check the master for being alive
 
 def ping_check_func():
    query = """'SELECT 1'"""
@@ -177,6 +185,9 @@ def ping_check_func():
       print "Slave, I am your Master\n"
       exit(0)
 
+# This function gives us all the non pgdata directories required
+# for operation, such as table spaces
+
 def get_datadirs_func():
    if pgversion == '8.2' or '8.3':
       query = """'SELECT * FROM cmd_get_data_dirs()'"""
@@ -184,6 +195,9 @@ def get_datadirs_func():
       if debug == 'on':    
          print paths + "\n"
    return paths.readlines()
+
+# Start a base backup on the master
+# First we issue a checkpoint and then a start backup
 
 def start_backup_func():
    query = """ 'checkpoint' """
@@ -199,6 +213,8 @@ def start_backup_func():
       notify_critical_func()
       exit(1)
 
+# Used to stop the basebackup on the master
+
 def stop_backup_func():
    query = """ 'SELECT cmd_pg_stop_backup()' """
    retval = system("%s -c %s\"" % (str(ssh_psql),str(query)))
@@ -206,6 +222,9 @@ def stop_backup_func():
       print "Unable to stop base backup"
       notify_critical_func()
       exit(1)
+
+# Simple function to help ensure we have all paths created for postgresql
+#
 
 def dbinit_func():
    paths = get_datadirs_func()
@@ -223,6 +242,10 @@ def dbinit_func():
             print "%s" % ((str(row)))
             exit(1)
 
+
+# Takes a base backup of master. This function is tricky because
+# there is a possibility of a non 0 exit status even when successful
+
 def base_backup_func():
    retval = os.system("rm -f %s/%s" % ((archivedir),str('*')))
    if retval:
@@ -237,7 +260,11 @@ def base_backup_func():
       retval = system("%s%s/ %s/" % (copy_dirs,row,row))
       if retval:
          print "Failed to get 0 exit status"
+         print "Check your rsync errors as this may be harmless"
+         print "File vanished: .... is ok"
          exit(1)
+
+# Start postgresql
 
 def start_postgresql_func():
    retval = system("%s -D %s start" % (str(pgctl),str(pgdata)))
@@ -246,12 +273,16 @@ def start_postgresql_func():
       notify_warning_func()
       exit(1)
 
+# Stop postgresql
+
 def stop_postgresql_func():
    retval = system("%s -D %s -m fast stop" % (str(pgctl),str(pgdata)))
    if retval:
       print "Unable to stop PostgreSQL"
       notify_critical_func()
       exit(1)
+
+# Writes recovery.conf file to pgdata
 
 def write_recovery_func():
    try:
@@ -264,6 +295,8 @@ def write_recovery_func():
       notify_critical_func()
       exit(1)
 
+# Copies in production slave configurations from storage location to production pgdata location
+
 def copy_confs_func():
    try:
       shutil.copy(pgconf,pgdata)
@@ -272,11 +305,15 @@ def copy_confs_func():
       print "Exception: %s" % (str(e))
       exit(1)
    try:
-      shutil.copy(pgconf,pgdata)
+      shutil.copy(hbaconf,pgdata)
    except Exception, e:
-      print "Unable to copy configuration files: %s" % (str(pgconf))
+      print "Unable to copy configuration files: %s" % (str(hbaconf))
       print "Exception: %s" % (str(e))
       exit(1)
+
+
+# Let's make sure that that postgresql is not actually running when needed
+#
 
 def check_pgpid_func():
    pidfile = '%s/postmaster.pid' % (str(pgdata))
@@ -289,10 +326,17 @@ def check_pgpid_func():
       return 0
    except:
       return 1
+
+# Standby function, we need to write the recovery configuration
+# and start postgresql
   
 def standby_func():
    write_recovery_func()
    start_postgresql_func()
+
+#
+# Function allows you to specify a script to execute on failover
+# The script must return 0 to be considered successful
 
 def failover_action_func():
    if action_failover:
@@ -310,10 +354,12 @@ check_config_func()
 if dbinit:
    check = check_pgpid_func()
    if check == 0:
-      print "ERROR: Can not take base backup with PG running locally"
+      print "ERROR: Can not execute --dbinit with PG running locally"
       exit(1)
    else:
       dbinit_func()
+
+# Run a base backup
 
 if base_backup:
    check = check_pgpid_func()
@@ -326,10 +372,12 @@ if base_backup:
       stop_backup_func()
       check_pg_xlog = check_pgxlog_path_func()
       if check_pg_xlog:
-         exit(1)
          notify_critical_func()
+         exit(1)
       else:
          exit(0)
+
+# If we want to failover to the latest good transaction
 
 if failover == '999' and not recovertotime:
    check = check_pgpid_func()
@@ -341,6 +389,8 @@ if failover == '999' and not recovertotime:
    failover_action_func()
    notify_ok_func()
 
+# If we want to failover to a specific point in time
+
 if failover == '999' and recovertotime:
    check = check_pgpid_func()
    if check == 0:
@@ -350,6 +400,8 @@ if failover == '999' and recovertotime:
    copy_confs_func()
    start_postgresql_func()
 
+# If we want to enter standby mode
+
 if standby:
    check = check_pgpid_func()
    if check == 0:
@@ -358,8 +410,12 @@ if standby:
    else:
       standby_func()
 
+# If we want to check if we can talk to the master
+
 if ping_check:
    ping_check_func()   
+
+# If we want to start or stop postgresql on the slave
 
 if pgctl_action == 'start':
    start_postgresql_func()
