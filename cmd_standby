@@ -189,10 +189,9 @@ def ping_check_func():
 # for operation, such as table spaces
 
 def get_datadirs_func():
-   if pgversion == '8.2' or '8.3':
-      query = """'SELECT * FROM cmd_get_data_dirs()'"""
-      paths = os.popen("%s -c %s\"" % (str(ssh_psql),str(query)))
-      if debug == 'on':    
+   query = """'SELECT * FROM cmd_get_data_dirs()'"""
+   paths = os.popen("%s -c %s\"" % (str(ssh_psql),str(query)))
+   if debug == 'on':    
          print paths + "\n"
    return paths.readlines()
 
