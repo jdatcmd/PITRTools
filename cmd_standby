@@ -378,26 +378,26 @@ if base_backup:
 
 # If we want to failover to the latest good transaction
 
-if failover == '999' and not recovertotime:
-   check = check_pgpid_func()
-   if check == 0:
-      stop_postgresql_func()
-   write_recovery_func()
-   copy_confs_func()
-   start_postgresql_func()
-   failover_action_func()
-   notify_ok_func()
-
-# If we want to failover to a specific point in time
-
-if failover == '999' and recovertotime:
-   check = check_pgpid_func()
-   if check == 0:
-      print "PostgreSQL is running. Bailing out"
-      exit(1)
-   write_recovery_func()
-   copy_confs_func()
-   start_postgresql_func()
+if failover == '999':
+   if not recovertotime:
+      check = check_pgpid_func()
+      if check == 0:
+         stop_postgresql_func()
+      write_recovery_func()
+      copy_confs_func()
+      start_postgresql_func()
+      failover_action_func()
+      notify_ok_func()
+   
+   # If we want to failover to a specific point in time
+   if recovertotime:
+      check = check_pgpid_func()
+      if check == 0:
+         print "PostgreSQL is running. Bailing out"
+         exit(1)
+      write_recovery_func()
+      copy_confs_func()
+      start_postgresql_func()
 
 # If we want to enter standby mode
 
