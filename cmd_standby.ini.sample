@@ -1,32 +1,60 @@
 [DEFAULT]
-pgversion: 8.2			; what major version are we using?
-protocol: ssh			; either we shell out to the remote server 
-				; via ssh or we use direct psql for commands
-numarchives: 10			; Used for 8.2 (8.1?), should be set to something > than checkpoint_segments on master
+; what major version are we using?
+pgversion: 8.2			
+
+; either we shell out to the remote server 
+; via ssh or we use direct psql for commands
+
+protocol: ssh			
+
+; Used for 8.2 (8.1?), should be set to something > than checkpoint_segments on master				
+numarchives: 10			
 
 ; Commands needed for execution
+; absolute path to ssh
+ssh: /usr/bin/ssh		
 
-ssh: /usr/bin/ssh		; absolute path to ssh
-rsync: /usr/bin/rsync		; absolute path to rsync
-psql: /usr/lib/postgresql/8.3/bin/psql	; the path to to the postgres bin
+; absolute path to rsync
+rsync: /usr/bin/rsync
+
+; the path to to the postgres bin		
+psql: /usr/lib/postgresql/8.3/bin/psql	
 pg_standby: /usr/lib/postgresql/8.3/bin/pg_standby
 pg_ctl: /usr/lib/postgresql/8.3/bin/pg_ctl
 
 ; Generalized information
 
-port: 6000			; the port postgresql runs on (master)
-master_public_ip: 192.168.3.254		; ip or name of master server 
-master_local_ip: 127.0.0.1	; the ip address we should use when processing remote shell
-user: postgres			; the use performed initdb
-debug: off	 		; on or off
-ssh_timeout: 30			; the timeout for ssh before we throw an alarm
-archivedir: /data2/pgsql/archive/	; should be the same as r_archivedir for archiver
-pgdata: /data1/pgsql/data/	; where you executed initdb -D to
+; the port postgresql runs on (master)
+port: 6000
+
+; ip or name of master server 			
+master_public_ip: 192.168.3.254
+
+; the ip address we should use when processing remote shell		
+master_local_ip: 127.0.0.1
+
+; the use performed initdb	
+user: postgres
+
+; on or off			
+debug: off	 	
+
+; the timeout for ssh before we throw an alarm
+ssh_timeout: 30			
+
+; should be the same as r_archivedir for archiver
+archivedir: /data2/pgsql/archive/
+
+; where you executed initdb -D to	
+pgdata: /data1/pgsql/data/	
 
 ; Confs
 
-postgresql_conf: /var/lib/postgresql/etc/postgresql.conf		; This is the postgresql.conf to be used when not in standby
-pg_hba_conf: /var/lib/postgresql/etc/pg_hba.conf			; This is the pg_hba.conf to be used when not in standby
+; This is the postgresql.conf to be used when not in standby
+postgresql_conf: /var/lib/postgresql/etc/postgresql.conf		
+
+; This is the pg_hba.conf to be used when not in standby
+pg_hba_conf: /var/lib/postgresql/etc/pg_hba.conf		
 
 ; Alarms
 
@@ -36,7 +64,9 @@ notify_ok:
 
 ; On failover action
 
-action_failover: /var/lib/postgresql/pitr_tools/failover.sh		; Whatever is placed here will be executed on -FS must return 0
+; Whatever is placed here will be executed on -FS must return 0
+
+action_failover: /var/lib/postgresql/pitr_tools/failover.sh	
 
 
 
