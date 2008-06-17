@@ -11,16 +11,24 @@ usage = "usage: %prog [options] arg1 arg2"
 parser = OptionParser(usage=usage)
 parser.add_option("-f", "--file", dest="archivefilename", action="store", help="Archive file", metavar="FILE")
 parser.add_option("-c", "--config", dest="configfilename", action="store",  help="the name of the archiver config file", metavar="FILE")
+parser.add_option("-F", "--flush", dest="flush", action="store_true", help="Flush all remaining archives to slave")
 (options, args) = parser.parse_args()
 
 archivefile = options.archivefilename
 configfile = options.configfilename
+flush = options.flush
 
 # both -c and -f are required
 
-if (archivefile == None or configfile == None):
-   parser.error("options -f and -c are required")
-   print "\n"   
+if flush:
+   if configfile == None:
+      parser.error("option -c are required")
+      print "\n"   
+else:
+   if archivefile == None or configfile == None:
+      parser.error("options -f and -c are required")
+      print "\n"   
+
 
 # initiate config parser 
 config = ConfigParser()
@@ -90,3 +98,11 @@ elif state == 'offline':
 else:
    print "I must either be online or offline. There is no NULL here"
    exit(1)
+
+if flush:
+   # We need to overwrite archivefile as we are moving a whole directory of files now
+   archivefiles = """%s/*""" % (str(l_archivedir))
+   retval = system("%s" % (scp_transfer))
+   if retval:
+      retval = system("%s %d" % (str(notify_critical), retval))
+      print "Bailing out! Critical Error"
