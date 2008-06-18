@@ -189,7 +189,12 @@ def ping_check_func():
 # for operation, such as table spaces
 
 def get_datadirs_func():
-   query = """'SELECT * FROM cmd_get_data_dirs()'"""
+   try:
+      query = """'SELECT * FROM cmd_get_data_dirs()'"""
+   except Exception, e:
+      print "Error: Unable to get data directories"
+      print "Hint: Did you apply cmd_standby.sql?"
+      print "Exception: %s" % (str(e))   
    paths = os.popen("%s -c %s\"" % (str(ssh_psql),str(query)))
    if debug == 'on':    
          print paths + "\n"
@@ -250,7 +255,12 @@ def base_backup_func():
    if retval:
       print "Unable to remove old archives"
       exit(1)
-   query = """'SELECT * FROM cmd_get_data_dirs()'"""
+   try:
+      query = """'SELECT * FROM cmd_get_data_dirs()'"""
+   except Exception, e:
+      print "Error: Unable to get data directories"
+      print "Hint: Did you apply cmd_standby.sql?"
+      print "Exception: %s" % (str(e))   
    paths = get_datadirs_func()
    if debug == 'on':
       print paths
