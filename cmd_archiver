@@ -1,5 +1,32 @@
 #!/usr/bin/env python
 
+""" LICENSE
+
+Copyright Command Prompt, Inc.
+
+Permission to use, copy, modify, and distribute this software and its
+documentation for any purpose, without fee, and without a written agreement
+is hereby granted, provided that the above copyright notice and this
+paragraph and the following two paragraphs appear in all copies.
+
+IN NO EVENT SHALL THE UNIVERSITY OF CALIFORNIA BE LIABLE TO ANY PARTY FOR
+DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, INCLUDING
+LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS DOCUMENTATION,
+EVEN IF THE UNIVERSITY OF CALIFORNIA HAS BEEN ADVISED OF THE POSSIBILITY OF
+SUCH DAMAGE.
+
+THE UNIVERSITY OF CALIFORNIA SPECIFICALLY DISCLAIMS ANY WARRANTIES,
+INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS ON AN
+"AS IS" BASIS, AND THE UNIVERSITY OF CALIFORNIA HAS NO OBLIGATIONS TO
+PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+
+"""
+
+
+import os
+import sys
+
 from ConfigParser import *
 from os import *
 from sys import *
@@ -9,26 +36,18 @@ from optparse import OptionParser
 
 usage = "usage: %prog [options] arg1 arg2"
 parser = OptionParser(usage=usage)
+
+parser.add_option("-A", "--archive", dest="archive", action="store_true", help="Whether or not to archive")
 parser.add_option("-f", "--file", dest="archivefilename", action="store", help="Archive file", metavar="FILE")
 parser.add_option("-c", "--config", dest="configfilename", action="store",  help="the name of the archiver config file", metavar="FILE")
 parser.add_option("-F", "--flush", dest="flush", action="store_true", help="Flush all remaining archives to slave")
+
 (options, args) = parser.parse_args()
 
+archive = options.archive
 archivefile = options.archivefilename
 configfile = options.configfilename
 flush = options.flush
-
-# both -c and -f are required
-
-if flush:
-   if configfile == None:
-      parser.error("option -c are required")
-      print "\n"   
-else:
-   if archivefile == None or configfile == None:
-      parser.error("options -f and -c are required")
-      print "\n"   
-
 
 # initiate config parser 
 config = ConfigParser()
@@ -48,6 +67,34 @@ notify_ok = config.defaults()['notify_ok']
 notify_warning = config.defaults()['notify_warning']
 notify_critical = config.defaults()['notify_critical']
 debug = config.defaults()['debug']
+pgdata = config.defaults()['pgdata']
+
+# Let's make sure certain items can be reached
+
+def check_config_func():  
+   pathvars = [scp_bin,rsync_bin,pgdata,configfile]
+   for element in pathvars:
+      try:
+         os.stat("%s" % (str(element)))
+      except OSError, e:
+         print "Config %s:  %s" % (str(element),str(e))
+         exit(1)
+
+check_config_func()
+
+# Some command line checking
+
+if flush:
+   if configfile == None:
+      parser.error("option -c is required")
+      print "\n"   
+
+if archive:
+   if configfile == None:
+      parser.error("option -c is required")
+   if flush:
+      print "ERROR: You can not flush and archive"
+      exit(1)
 
 if debug == 'on':
    print config.defaults().keys()
@@ -59,50 +106,81 @@ if debug == 'on':
 else:
    scp_flags = "-o ConnectTimeout=%s -o StrictHostKeyChecking=no" % (str(timeout))
 
-scp_transfer = "%s %s %s %s@%s:%s" % (str(scp_bin), str(scp_flags), str(archivefile), str(user), str(slave), str(r_archivedir))
-rsync_transfer = """%s -e "ssh %s" %s %s@%s:%s""" % (str(rsync_bin), str(scp_flags), str(archivefile), str(user), str(slave), str(r_archivedir))
-file_transfer = "cp %s %s" % (str(archivefile),str(l_archivedir))
 
-if state == 'online':
-   if protocol == 'scp':
-      if debug == 'on':
-         print "SSH: %s " % (scp_transfer)
-      retval = system("%s" % (scp_transfer))
-      if retval:
-         retval = system("%s %d" % (str(notify_critical), retval))
-         print "Bailing out! Critical Error"
-      else:
-         retval = system("%s" % (str(notify_ok)))
-   if protocol == 'rsync':
-      if debug == 'on':
-         print "RSYNC: %s " % (rsync_transfer)
-      retval = system("%s" % (rsync_transfer))
-      if retval:
-         retval = system("%s %d" % (str(notify_critical), retval))
-         print "Bailing out! Critical Error"
-      else:
-         retval = system("%s" % (str(notify_ok)))
-   elif protocol == 'file':
-      if debug == 'on':
-         print "FILE: %s" % (file_transfer)
-      retval = system("%s" % (file_transfer))
-      if retval:
-         retval = system("%s %d" % (str(notify_critical), retval))
-         print "Unable to copy file %s to %s : %d" % (str(archivefile), str(l_archivedir), retval) 
-      else:
-         retval = system("%s" % (str(notify_ok)))
-elif state == 'offline':
-   print "ARCHIVER: We are offline, queuing archives"
-   system("%s" % (str(notify_warning)))
-   exit(1)
+def check_pgpid_func():
+   pidfile = '%s/postmaster.pid' % (str(pgdata))
+   try:
+      check = os.stat(pidfile)
+      if check:
+         file = open(pidfile,'r')
+         line = int(file.readline())
+      sendsignal = os.kill(line,0)
+      return 0
+   except:
+      return 1
+
+if not flush:
+   scp_transfer = "%s %s %s %s@%s:%s" % (str(scp_bin), str(scp_flags), str(archivefile), str(user), str(slave), str(r_archivedir))
+   rsync_transfer = """%s -e "ssh %s" %s %s@%s:%s""" % (str(rsync_bin), str(scp_flags), str(archivefile), str(user), str(slave), str(r_archivedir))
+   file_transfer = "cp %s %s" % (str(archivefile),str(l_archivedir))
 else:
-   print "I must either be online or offline. There is no NULL here"
-   exit(1)
+   check = check_pgpid_func()
+   if check == 0:
+      print "ERROR: Can not enter flush mode if PG is already running"
+      exit(1)
+   else:
+      scp_transfer = "%s %s %s/pg_xlog/* %s@%s:%s" % (str(scp_bin), str(scp_flags), str(pgdata), str(user), str(slave), str(r_archivedir))
+      rsync_transfer = """%s %s/pg_xlog/* -e "ssh %s"  %s@%s:%s""" % (str(rsync_bin), str(pgdata), str(scp_flags), str(user), str(slave), str(r_archivedir))
+      file_transfer = "cp %s/pg_xlog/* %s" % (str(pgdata),str(l_archivedir))
+
+if debug:
+   if protocol == 'scp':
+      print scp_transfer
+   elif protocol == 'rsync':
+      print rsync_transfer
+   else:
+      print file_transfer
+
+def archive_func():
+      if state == 'online':
+         if protocol == 'scp':
+            if debug == 'on':
+               print "SSH: %s " % (scp_transfer)
+            retval = system("%s" % (scp_transfer))
+            if retval:
+               retval = system("%s %d" % (str(notify_critical), retval))
+               print "Bailing out! Critical Error"
+            else:
+               retval = system("%s" % (str(notify_ok)))
+         if protocol == 'rsync':
+            if debug == 'on':
+               print "RSYNC: %s " % (rsync_transfer)
+            retval = system("%s" % (rsync_transfer))
+            if retval:
+               retval = system("%s %d" % (str(notify_critical), retval))
+               print "Bailing out! Critical Error"
+            else:
+               retval = system("%s" % (str(notify_ok)))
+         elif protocol == 'file':
+            if debug == 'on':
+               print "FILE: %s" % (file_transfer)
+            retval = system("%s" % (file_transfer))
+            if retval:
+               retval = system("%s %d" % (str(notify_critical), retval))
+               print "Unable to copy file %s to %s : %d" % (str(archivefile), str(l_archivedir), retval) 
+            else:
+               retval = system("%s" % (str(notify_ok)))
+      elif state == 'offline':
+         print "ARCHIVER: We are offline, queuing archives"
+         system("%s" % (str(notify_warning)))
+         exit(1)
+      else:
+         print "I must either be online or offline. There is no NULL here"
+         exit(1)
 
 if flush:
-   # We need to overwrite archivefile as we are moving a whole directory of files now
-   archivefile = """%s/*""" % (str(l_archivedir))
-   retval = system("%s" % (scp_transfer))
-   if retval:
-      retval = system("%s %d" % (str(notify_critical), retval))
-      print "Bailing out! Critical Error"
+   check_pgpid_func()
+   archive_func()
+else:
+   archive_func()
+

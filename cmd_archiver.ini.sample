@@ -2,9 +2,9 @@
 ; online or offline
 state: online					
 
-; where are the xlogs, this is used for flush mode
+; The base database directory
 
-pg_xlog: /data1/pgsql/data/pg_xlog
+pgdata: /data1/pgsql/data
 
 ; where to remotely copy archives
 r_archivedir: /data2/pgsql/archive
@@ -34,10 +34,10 @@ timeout: 10
 notify_ok: echo ok 				
 
 ; command to process in warning
-notify_warning:  ls                              
+notify_warning:  echo WARNING
 
 ; command to process in critical
-notify_critical: ls
+notify_critical: echo CRITICAL
 
 ; if you want to debug on/off only		 	
 debug: on			
