@@ -101,7 +101,7 @@ else:
 
 if flush:
    # We need to overwrite archivefile as we are moving a whole directory of files now
-   archivefiles = """%s/*""" % (str(l_archivedir))
+   archivefile = """%s/*""" % (str(l_archivedir))
    retval = system("%s" % (scp_transfer))
    if retval:
       retval = system("%s %d" % (str(notify_critical), retval))

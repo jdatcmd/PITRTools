@@ -2,6 +2,10 @@
 ; online or offline
 state: online					
 
+; where are the xlogs, this is used for flush mode
+
+pg_xlog: /data1/pgsql/data/pg_xlog
+
 ; where to remotely copy archives
 r_archivedir: /data2/pgsql/archive
 
