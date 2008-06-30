@@ -3,6 +3,14 @@
 pitr_tools is a suite of utilities to make point in time easier. It uses a
 push mechanism  for updating archives.
 
+Options:
+  -h, --help            show this help message and exit
+  -A, --archive         Whether or not to archive
+  -F FILE, --file=FILE  Archive file
+  -C FILE, --config=FILE
+                        the name of the archiver config file
+  -f, --flush           Flush all remaining archives to slave
+
 Dependencies:
 
  key based ssh auth between the master and slave (both ways)
@@ -10,54 +18,106 @@ Dependencies:
 To enable, one must edit the postgresql.conf.
 
 archive_mode = on		# allows archiving to be done
-archive_command = 'bin/archiver -c etc/archiver.ini -F %p'
+archive_command = 'bin/archiver -A -C etc/archiver.ini -F %p'
 
--c takes the path to the config file
--f takes the path (or file) of the archive. 
+-A tells the system to actually archive
+-C takes the path to the config file
+-F takes the path (or file) of the archive. 
+
+-f/--flush is used at the command line only.
+
+--flush:
+
+You use flush before passing -F999 to cmd_standby. This is done
+to make sure that all logs that master has written are available to
+the standby before a failover.
+
+Note that the use of --flush is a one way trip. Once used, you must
+bring your slave into production or you will have to issue a new base
+backup.
 
 The archiver.ini file contains a variety of options. 
 
-state: online | offline
+[DEFAULT]
+; online or offline
+state: online					
 
-If state is online, postgresql will attempt to copy either to
-r_archivedir or l_archivedir based on whether or not your protocol is
-scp (r_archivedir) or file (l_archivedir).
+You can change the archiver to offline live, without touching postgresql.
 
-If state is offline, postgresql will queue archive files until you mark the
-archiver online again. This can fill up your pg_xlogs so watch for that.
+; The base database directory
 
-The r_archivedir is the directory on the remote machine in which the
-master will copy its archive logs. If this process fails, the archiver
-will throw notify_critical. This option is only useful if protocol is of
-scp.
+pgdata: /data1/pgsql/data
 
-The l_archivedir is the directory on the local machine in which the
-master will copy its archive files if protocol is set to file. This
-could be because the archive directory is NFS mounted or perhaps you
-have a local duplicate of your database (for some reason). If this
-process fails the archiver will throw notify_critical. This option is only
-useful if protocol is of file.
+This is the PGDATA on the archiving machine.
 
-The protocol is one of scp or file. 
+; where to remotely copy archives
+r_archivedir: /data2/pgsql/archive
 
-The slave is the ip address (name) of the remote machine.
-The user is the user who is performing the ssh key based auth, e.g; scp
-foo postgres@slave.com:
+The remote archive directory, e.g; the directory that will accept all
+archive files to be restored by the standby server.
 
-The timeout is the amount of second scp will wait before it gets a
-timeout and errors. If this happens we throw a notify_critical. However
-PostgreSQL will not throw away the archive. It will continue to try to
-deliver the archive until it is successful or you set the protocol to file
-in which case it will begin copying locally.
+; where to locally copy archives (for file mode) 		
+l_archivedir: /data2/pgsql/archive
 
-If notify_ok is set, we will use notify_ok on the proper copy of each
-file.
+The local archive directory. This is used when you want to archive all
+files locally. For example, if you are using an NFS mount for the standby
+server to get its files.
 
-notify_critical: echo "We have failed" ; command to process in critical
+; the path to the version of scp you want to use		
+scp_bin: /usr/bin/scp
 
-notify_ok, notify_warning and notify_critical are arbitrary shell commands
-that are defined in the archiver.ini. This allows you to alert nagios for
-example.
+Must point to the actual binary of scp.
+
+; where is rsync				
+rsync_bin: /usr/bin/rsync			
+
+Must point to the actual binary of rsync. We use rsync over ssh, so don't
+bother with an rsync server.
+
+; can be scp | file | rsync
+protocol: rsync
+
+Rsync is absolutely preferred due to its error checking and guarantee of 
+delivery.
+
+; IP of slave					
+slave: 192.168.3.1
+
+This is the ip address of the standby server. A hostname/FQDN would work as well.
+
+; the user that will be using scp				
+user: postgres					
+
+The unix shell user that is using scp. This is the user that must have ssh 
+keys configured between the master and slave.
+
+; if scp can't connect in 10 seconds error
+timeout: 10
+
+The SSH timeout. If it takes > timeout to begin the transfer the archiver will
+provide a non zero return and alert per notify_critical.
+
+; command to process in ok					
+notify_ok: echo ok 				
+
+Everything is o.k. so what do we do? This should be full path to a script.
+For example, a nagios alert.
+
+; command to process in warning
+notify_warning:  echo WARNING
+
+The same as OK but for warnings.
+
+; command to process in critical
+notify_critical: echo CRITICAL
+
+The same as OK but for CRITICAL. This is total failure conditions.
+
+; if you want to debug on/off only		 	
+debug: off
+
+This will provide you a lot of noisy info to wherever you push your
+postgresql logging.
 
 
 
