@@ -10,7 +10,7 @@ Dependencies:
 To enable, one must edit the postgresql.conf.
 
 archive_mode = on		# allows archiving to be done
-archive_command = 'bin/archiver -c etc/archiver.ini -f %p'
+archive_command = 'bin/archiver -c etc/archiver.ini -F %p'
 
 -c takes the path to the config file
 -f takes the path (or file) of the archive. 

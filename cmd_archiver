@@ -38,9 +38,9 @@ usage = "usage: %prog [options] arg1 arg2"
 parser = OptionParser(usage=usage)
 
 parser.add_option("-A", "--archive", dest="archive", action="store_true", help="Whether or not to archive")
-parser.add_option("-f", "--file", dest="archivefilename", action="store", help="Archive file", metavar="FILE")
-parser.add_option("-c", "--config", dest="configfilename", action="store",  help="the name of the archiver config file", metavar="FILE")
-parser.add_option("-F", "--flush", dest="flush", action="store_true", help="Flush all remaining archives to slave")
+parser.add_option("-F", "--file", dest="archivefilename", action="store", help="Archive file", metavar="FILE")
+parser.add_option("-C", "--config", dest="configfilename", action="store",  help="the name of the archiver config file", metavar="FILE")
+parser.add_option("-f", "--flush", dest="flush", action="store_true", help="Flush all remaining archives to slave")
 
 (options, args) = parser.parse_args()
 
