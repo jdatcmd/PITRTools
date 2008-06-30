@@ -296,9 +296,10 @@ def base_backup_func():
       row = row.rstrip('\n')
       retval = system("%s%s/ %s/" % (copy_dirs,row,row))
       if retval:
-         print "Failed to get 0 exit status"
-         print "Check your rsync errors as this may be harmless"
-         print "File vanished: .... is ok"
+         print "WARNING: Failed to get 0 exit status"
+         print "LOG: Check your rsync errors as this may be harmless"
+         print "LOG: File vanished: .... is ok"
+         print "NOTICE: You will need to issue a -Astop_basebackup if you deem these errors harmelss"
          exit(1)
 
 # Start postgresql

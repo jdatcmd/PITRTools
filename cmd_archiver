@@ -133,6 +133,23 @@ else:
       rsync_transfer = """%s %s/pg_xlog/* -e "ssh %s"  %s@%s:%s""" % (str(rsync_bin), str(pgdata), str(scp_flags), str(user), str(slave), str(r_archivedir))
       file_transfer = "cp %s/pg_xlog/* %s" % (str(pgdata),str(l_archivedir))
 
+def flush_check_func():
+   print "\n\n"
+   print "Warning! Flushing all logs will cause your slave to exit"
+   print "Standby and start up. Please verify that this is exactly what you desire.\n\n"""
+
+   print "I wish to force my slave into production: No/Yes\n\n"
+
+   line = str(raw_input())
+   if line == "Yes":
+      print "Flushing all xlogs"
+   elif line == "No":
+      print "Exiting!"
+      exit(0)
+   else:
+      print "Your options are Yes and No"
+      exit(0)
+
 if debug:
    if protocol == 'scp':
       print scp_transfer
@@ -179,6 +196,7 @@ def archive_func():
          exit(1)
 
 if flush:
+   flush_check_func()
    check_pgpid_func()
    archive_func()
 else:
