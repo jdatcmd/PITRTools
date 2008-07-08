@@ -225,7 +225,7 @@ def get_datadirs_func():
       print "Exception: %s" % (str(e))   
    paths = os.popen("%s -c %s\"" % (str(ssh_psql),str(query)))
    if debug == 'on':    
-         print paths + "\n"
+         print paths
    return paths.readlines()
 
 # Start a base backup on the master
