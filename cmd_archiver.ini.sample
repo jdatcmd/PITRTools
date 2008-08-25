@@ -19,7 +19,7 @@ scp_bin: /usr/bin/scp
 rsync_bin: /usr/bin/rsync			
 
 ; can be scp | file | rsync
-protocol: rsync
+protocol: file
 
 ; IP of slave					
 slave: 192.168.3.1

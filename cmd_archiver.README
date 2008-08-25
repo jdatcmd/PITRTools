@@ -10,6 +10,7 @@ Options:
   -C FILE, --config=FILE
                         the name of the archiver config file
   -f, --flush           Flush all remaining archives to slave
+  -P, --push		Push archives to a remote host
 
 Dependencies:
 
@@ -36,13 +37,27 @@ Note that the use of --flush is a one way trip. Once used, you must
 bring your slave into production or you will have to issue a new base
 backup.
 
+--push:
+
+The push option is designed to work with the protocol: file option. 
+Essentially this allows the archiver to copy the archive files to the
+l_archivedir location. You would then call the archiver independently
+of PostgreSQL using a scheduler such as cron. When you call the archiver
+with push it will rsync (using ssh) all files in l_archivedir to 
+r_archivedir.
+
 The archiver.ini file contains a variety of options. 
 
 [DEFAULT]
 ; online or offline
 state: online					
 
-You can change the archiver to offline live, without touching postgresql.
+You can change the archiver to offline live, without touching postgresql. 
+When taking the archiver offline this will cause an non zero exit status
+to postgresql's archive command on each archive attempt. This is o.k. 
+because postgresql will just queue up the archives while the archiver is
+offline. However this can cause you to accidently fill up your hard disk
+so use with care.
 
 ; The base database directory
 

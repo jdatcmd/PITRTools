@@ -41,6 +41,7 @@ parser.add_option("-A", "--archive", dest="archive", action="store_true", help="
 parser.add_option("-F", "--file", dest="archivefilename", action="store", help="Archive file", metavar="FILE")
 parser.add_option("-C", "--config", dest="configfilename", action="store",  help="the name of the archiver config file", metavar="FILE")
 parser.add_option("-f", "--flush", dest="flush", action="store_true", help="Flush all remaining archives to slave")
+parser.add_option("-P", "--push", dest="push", action="store_true", help="Push archives to remote host")
 
 (options, args) = parser.parse_args()
 
@@ -48,6 +49,7 @@ archive = options.archive
 archivefile = options.archivefilename
 configfile = options.configfilename
 flush = options.flush
+push = options.push
 
 # initiate config parser 
 config = ConfigParser()
@@ -89,6 +91,11 @@ if flush:
       parser.error("option -c is required")
       print "\n"   
 
+if push:
+   if protocol != 'file':
+      parser.error("option -P requires a protocol of file")
+      print "\n"
+
 if archive:
    if configfile == None:
       parser.error("option -c is required")
@@ -121,6 +128,7 @@ def check_pgpid_func():
 
 if not flush:
    scp_transfer = "%s %s %s %s@%s:%s" % (str(scp_bin), str(scp_flags), str(archivefile), str(user), str(slave), str(r_archivedir))
+   push_transfer = """%s -e "ssh %s" %s/* %s@%s:%s""" % (str(rsync_bin), str(scp_flags), str(l_archivedir), str(user), str(slave), str(r_archivedir))
    rsync_transfer = """%s -e "ssh %s" %s %s@%s:%s""" % (str(rsync_bin), str(scp_flags), str(archivefile), str(user), str(slave), str(r_archivedir))
    file_transfer = "cp %s %s" % (str(archivefile),str(l_archivedir))
 else:
@@ -130,6 +138,7 @@ else:
       exit(1)
    else:
       scp_transfer = "%s %s %s/pg_xlog/* %s@%s:%s" % (str(scp_bin), str(scp_flags), str(pgdata), str(user), str(slave), str(r_archivedir))
+      push_transfer = """%s -e "ssh %s" %s/* %s@%s:%s""" % (str(rsync_bin), str(scp_flags), str(l_archivedir), str(user), str(slave), str(r_archivedir))
       rsync_transfer = """%s %s/pg_xlog/* -e "ssh %s"  %s@%s:%s""" % (str(rsync_bin), str(pgdata), str(scp_flags), str(user), str(slave), str(r_archivedir))
       file_transfer = "cp %s/pg_xlog/* %s" % (str(pgdata),str(l_archivedir))
 
