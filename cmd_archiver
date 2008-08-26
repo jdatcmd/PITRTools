@@ -130,7 +130,7 @@ if not flush:
    scp_transfer = "%s %s %s %s@%s:%s" % (str(scp_bin), str(scp_flags), str(archivefile), str(user), str(slave), str(r_archivedir))
    push_transfer = """%s -e "ssh %s" %s/* %s@%s:%s""" % (str(rsync_bin), str(scp_flags), str(l_archivedir), str(user), str(slave), str(r_archivedir))
    rsync_transfer = """%s -e "ssh %s" %s %s@%s:%s""" % (str(rsync_bin), str(scp_flags), str(archivefile), str(user), str(slave), str(r_archivedir))
-   file_transfer = "cp %s %s" % (str(archivefile),str(l_archivedir))
+   file_transfer = "rsync -auv %s %s" % (str(archivefile),str(l_archivedir))
 else:
    check = check_pgpid_func()
    if check == 0:
@@ -140,7 +140,7 @@ else:
       scp_transfer = "%s %s %s/pg_xlog/* %s@%s:%s" % (str(scp_bin), str(scp_flags), str(pgdata), str(user), str(slave), str(r_archivedir))
       push_transfer = """%s -e "ssh %s" %s/* %s@%s:%s""" % (str(rsync_bin), str(scp_flags), str(l_archivedir), str(user), str(slave), str(r_archivedir))
       rsync_transfer = """%s %s/pg_xlog/* -e "ssh %s"  %s@%s:%s""" % (str(rsync_bin), str(pgdata), str(scp_flags), str(user), str(slave), str(r_archivedir))
-      file_transfer = "cp %s/pg_xlog/* %s" % (str(pgdata),str(l_archivedir))
+      file_transfer = "rsync -auv %s/pg_xlog/* %s" % (str(pgdata),str(l_archivedir))
 
 def flush_check_func():
    print "\n\n"
