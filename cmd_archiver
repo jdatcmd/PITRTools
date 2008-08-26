@@ -74,7 +74,10 @@ pgdata = config.defaults()['pgdata']
 # Let's make sure certain items can be reached
 
 def check_config_func():  
-   pathvars = [scp_bin,rsync_bin,pgdata,configfile]
+   if protocol == 'file':
+      pathvars = [l_archivedir,scp_bin,rsync_bin,pgdata,configfile]
+   else:
+      pathvars = [scp_bin,rsync_bin,pgdata,configfile]
    for element in pathvars:
       try:
          os.stat("%s" % (str(element)))
@@ -128,7 +131,7 @@ def check_pgpid_func():
 
 if not flush:
    scp_transfer = "%s %s %s %s@%s:%s" % (str(scp_bin), str(scp_flags), str(archivefile), str(user), str(slave), str(r_archivedir))
-   push_transfer = """%s -e "ssh %s" %s/* %s@%s:%s""" % (str(rsync_bin), str(scp_flags), str(l_archivedir), str(user), str(slave), str(r_archivedir))
+   push_transfer = """%s -e "ssh %s" %s/* %s@%s:%s/""" % (str(rsync_bin), str(scp_flags), str(l_archivedir), str(user), str(slave), str(r_archivedir))
    rsync_transfer = """%s -e "ssh %s" %s %s@%s:%s""" % (str(rsync_bin), str(scp_flags), str(archivefile), str(user), str(slave), str(r_archivedir))
    file_transfer = "rsync -auv %s %s" % (str(archivefile),str(l_archivedir))
 else:
@@ -138,7 +141,7 @@ else:
       exit(1)
    else:
       scp_transfer = "%s %s %s/pg_xlog/* %s@%s:%s" % (str(scp_bin), str(scp_flags), str(pgdata), str(user), str(slave), str(r_archivedir))
-      push_transfer = """%s -e "ssh %s" %s/* %s@%s:%s""" % (str(rsync_bin), str(scp_flags), str(l_archivedir), str(user), str(slave), str(r_archivedir))
+      push_transfer = """%s -e "ssh %s" %s/* %s@%s:%s/""" % (str(rsync_bin), str(scp_flags), str(l_archivedir), str(user), str(slave), str(r_archivedir))
       rsync_transfer = """%s %s/pg_xlog/* -e "ssh %s"  %s@%s:%s""" % (str(rsync_bin), str(pgdata), str(scp_flags), str(user), str(slave), str(r_archivedir))
       file_transfer = "rsync -auv %s/pg_xlog/* %s" % (str(pgdata),str(l_archivedir))
 
@@ -164,8 +167,11 @@ if debug:
       print scp_transfer
    elif protocol == 'rsync':
       print rsync_transfer
-   else:
-      print file_transfer
+   elif protocol == 'file':
+      if push:
+         print push_transfer
+      else:
+         print file_transfer
 
 def archive_func():
       if state == 'online':
@@ -188,11 +194,22 @@ def archive_func():
             else:
                retval = system("%s" % (str(notify_ok)))
          elif protocol == 'file':
-            if debug == 'on':
-               print "FILE: %s" % (file_transfer)
-            retval = system("%s" % (file_transfer))
-            if retval:
-               retval = system("%s %d" % (str(notify_critical), retval))
+            if push:
+               if debug == 'on':
+                  print "PUSH: %s " % (push_transfer)
+               retval = system("%s" % (push_transfer))
+               if retval:
+                  retval = system("%s %d" % (str(notify_critical), retval))
+                  print "Bailing out! Critical Error"
+               else:
+                  retval = system("%s" % (str(notify_ok)))
+         elif protocol == 'file':
+            if not push:
+               if debug == 'on':
+                  print "FILE: %s" % (file_transfer)
+               retval = system("%s" % (file_transfer))
+               if retval:
+                  retval = system("%s %d" % (str(notify_critical), retval))
                print "Unable to copy file %s to %s : %d" % (str(archivefile), str(l_archivedir), retval) 
             else:
                retval = system("%s" % (str(notify_ok)))
