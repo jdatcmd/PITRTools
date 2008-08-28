@@ -6,6 +6,10 @@ state: online
 
 pgdata: /data1/pgsql/data
 
+; Because we need to generate last checkpoint segment file names for cleanup routines
+
+pgcontroldata: /usr/lib/postgresql/8.3/bin/pg_controldata
+
 ; where to remotely copy archives
 r_archivedir: /data2/pgsql/archive
 
