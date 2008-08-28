@@ -263,7 +263,6 @@ def dbinit_func():
    for row in paths:
       if debug == 'on':
          print row
-         print "foo"
       row = row.rstrip('\n')
       try:
          os.makedirs(row,0700)
@@ -299,7 +298,7 @@ def base_backup_func():
          print "WARNING: Failed to get 0 exit status"
          print "LOG: Check your rsync errors as this may be harmless"
          print "LOG: File vanished: .... is ok"
-         print "NOTICE: You will need to issue a -Astop_basebackup if you deem these errors harmelss"
+         print "NOTICE: You will need to issue a -Astop_basebackup if you deem these errors harmless"
          exit(1)
 
 # Start postgresql

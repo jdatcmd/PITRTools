@@ -26,6 +26,7 @@ PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 import os
 import sys
+import re
 
 from ConfigParser import *
 from os import *
@@ -71,12 +72,13 @@ notify_warning = config.defaults()['notify_warning']
 notify_critical = config.defaults()['notify_critical']
 debug = config.defaults()['debug']
 pgdata = config.defaults()['pgdata']
+pgcontroldata = config.defaults()['pgcontroldata']
 
 # Let's make sure certain items can be reached
 
 def check_config_func():  
    if protocol == 'file':
-      pathvars = [l_archivedir,scp_bin,rsync_bin,pgdata,configfile]
+      pathvars = [l_archivedir,scp_bin,rsync_bin,pgdata,configfile,pgcontroldata]
    else:
       pathvars = [scp_bin,rsync_bin,pgdata,configfile]
    for element in pathvars:
@@ -129,6 +131,25 @@ def check_pgpid_func():
       return 0
    except:
       return 1
+
+def get_pgcontroldata_func():
+   try:
+      cmd = os.popen("%s %s" % (str(pgcontroldata),str(pgdata)))
+      #return cmd.readlines
+      for row in cmd:
+         row = re.findall('/^Prior checkpoint location:[ \w\d\.]{1,}$/' , '%s' % (str(row)))
+         print row
+      
+   except OSError, e:
+      print
+      print "Exception: %s" % (str(e))
+      exit(1)
+
+def get_lastcheckpoint_func():
+   lastcheckpoint = get_pgcontroldata_func()
+   print "Last Checkpoint: " + lastcheckpoint
+   search = re.findall('^Prior checkpoint location$','%s' % (str(lastcheckpoint)))
+   print search
 
 if flush:
    check = check_pgpid_func()
@@ -200,6 +221,8 @@ def archive_func():
                try:
                   system("%s" % (push_transfer))
                   system("%s" % (str(notify_ok)))
+                  #get_lastcheckpoint_func()
+                  get_pgcontroldata_func()
                except OSError, e:
                   system("%s %d" % (str(notify_critical), retval))
                   print "Bailing out! Critical Error"
