@@ -154,7 +154,6 @@ if flush:
       print "ERROR: Can not enter flush mode if PG is already running"
       exit(1)
    scp_transfer = "%s %s %s/pg_xlog/* %s@%s:%s" % (str(scp_bin), str(scp_flags), str(pgdata), str(user), str(slave), str(r_archivedir))
-   push_transfer = """%s -azv --remove-source-files -e "ssh %s" %s/* %s@%s:%s/""" % (str(rsync_bin), str(scp_flags), str(l_archivedir), str(user), str(slave), str(r_archivedir))
    rsync_transfer = """%s %s/pg_xlog/* -e "ssh %s"  %s@%s:%s""" % (str(rsync_bin), str(pgdata), str(scp_flags), str(user), str(slave), str(r_archivedir))
    file_transfer = "rsync -au %s/pg_xlog/* %s" % (str(pgdata),str(l_archivedir))
 else:
@@ -212,17 +211,6 @@ def archive_func():
             else:
                retval = system("%s" % (str(notify_ok)))
          if protocol == 'file':
-            if push:
-               if debug == 'on':
-                  print "PUSH: %s " % (push_transfer)
-               try:
-                  system("%s" % (push_transfer))
-                  system("%s" % (str(notify_ok)))
-               except OSError, e:
-                  system("%s %d" % (str(notify_critical), retval))
-                  print "Bailing out! Critical Error"
-                  print
-                  print "Exception: %s" % (str(e))
             if not push:
                if debug == 'on':
                   print "FILE: %s" % (file_transfer)
@@ -244,10 +232,26 @@ def archive_func():
          print "I must either be online or offline. There is no NULL here"
          exit(1)
 
+def push_func():
+   if protocol == 'file':
+      if push:
+         if debug == 'on':
+            print "PUSH: %s " % (push_transfer)
+            try:
+               system("%s" % (push_transfer))
+               system("%s" % (str(notify_ok)))
+            except OSError, e:
+               system("%s %d" % (str(notify_critical), retval))
+               print "Bailing out! Critical Error"
+               print
+               print "Exception: %s" % (str(e))
+
 if flush:
    flush_check_func()
    check_pgpid_func()
    archive_func()
+elif push:
+   push_func()
 else:
    archive_func()
 
