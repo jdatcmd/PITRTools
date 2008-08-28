@@ -56,6 +56,7 @@ config = ConfigParser()
 config.read(configfile)
 
 # Set up our keys
+debug = 'on'
 state = config.defaults()['state']
 scp_bin = config.defaults()['scp_bin']
 rsync_bin = config.defaults()['rsync_bin']
@@ -129,21 +130,20 @@ def check_pgpid_func():
    except:
       return 1
 
-if not flush:
-   scp_transfer = "%s %s %s %s@%s:%s" % (str(scp_bin), str(scp_flags), str(archivefile), str(user), str(slave), str(r_archivedir))
-   push_transfer = """%s -azv --delete -e "ssh %s" %s/* %s@%s:%s/""" % (str(rsync_bin), str(scp_flags), str(l_archivedir), str(user), str(slave), str(r_archivedir))
-   rsync_transfer = """%s -e "ssh %s" %s %s@%s:%s""" % (str(rsync_bin), str(scp_flags), str(archivefile), str(user), str(slave), str(r_archivedir))
-   file_transfer = "rsync -auv %s %s" % (str(archivefile),str(l_archivedir))
-else:
+if flush:
    check = check_pgpid_func()
    if check == 0:
       print "ERROR: Can not enter flush mode if PG is already running"
       exit(1)
-   else:
-      scp_transfer = "%s %s %s/pg_xlog/* %s@%s:%s" % (str(scp_bin), str(scp_flags), str(pgdata), str(user), str(slave), str(r_archivedir))
-      push_transfer = """%s -azv --delete -e "ssh %s" %s/* %s@%s:%s/""" % (str(rsync_bin), str(scp_flags), str(l_archivedir), str(user), str(slave), str(r_archivedir))
-      rsync_transfer = """%s %s/pg_xlog/* -e "ssh %s"  %s@%s:%s""" % (str(rsync_bin), str(pgdata), str(scp_flags), str(user), str(slave), str(r_archivedir))
-      file_transfer = "rsync -auv %s/pg_xlog/* %s" % (str(pgdata),str(l_archivedir))
+   scp_transfer = "%s %s %s/pg_xlog/* %s@%s:%s" % (str(scp_bin), str(scp_flags), str(pgdata), str(user), str(slave), str(r_archivedir))
+   push_transfer = """%s -azv --delete -e "ssh %s" %s/* %s@%s:%s/""" % (str(rsync_bin), str(scp_flags), str(l_archivedir), str(user), str(slave), str(r_archivedir))
+   rsync_transfer = """%s %s/pg_xlog/* -e "ssh %s"  %s@%s:%s""" % (str(rsync_bin), str(pgdata), str(scp_flags), str(user), str(slave), str(r_archivedir))
+   file_transfer = "rsync -au %s/pg_xlog/* %s" % (str(pgdata),str(l_archivedir))
+else:
+   scp_transfer = "%s %s %s %s@%s:%s" % (str(scp_bin), str(scp_flags), str(archivefile), str(user), str(slave), str(r_archivedir))
+   push_transfer = """%s -azv --delete -e "ssh %s" %s/* %s@%s:%s/""" % (str(rsync_bin), str(scp_flags), str(l_archivedir), str(user), str(slave), str(r_archivedir))
+   rsync_transfer = """%s -e "ssh %s" %s %s@%s:%s""" % (str(rsync_bin), str(scp_flags), str(archivefile), str(user), str(slave), str(r_archivedir))
+   file_transfer = "rsync %s/%s %s" % (str(pgdata),str(archivefile),str(l_archivedir))
 
 def flush_check_func():
    print "\n\n"
@@ -193,24 +193,29 @@ def archive_func():
                print "Bailing out! Critical Error"
             else:
                retval = system("%s" % (str(notify_ok)))
-         elif protocol == 'file':
+         if protocol == 'file':
             if push:
                if debug == 'on':
                   print "PUSH: %s " % (push_transfer)
-               retval = system("%s" % (push_transfer))
-               if retval:
-                  retval = system("%s %d" % (str(notify_critical), retval))
+               try:
+                  system("%s" % (push_transfer))
+                  system("%s" % (str(notify_ok)))
+               except OSError, e:
+                  system("%s %d" % (str(notify_critical), retval))
                   print "Bailing out! Critical Error"
-               else:
-                  retval = system("%s" % (str(notify_ok)))
-         elif protocol == 'file':
+                  print
+                  print "Exception: %s" % (str(e))
             if not push:
                if debug == 'on':
                   print "FILE: %s" % (file_transfer)
-               retval = system("%s" % (file_transfer))
-               if retval:
-                  retval = system("%s %d" % (str(notify_critical), retval))
-               print "Unable to copy file %s to %s : %d" % (str(archivefile), str(l_archivedir), retval) 
+               try:
+                  system("%s" % (file_transfer))
+               except OSError, e:
+                  system("%s %d" % (str(notify_critical), retval))
+                  print 
+                  print "Unable to copy file %s to %s " % (str(archivefile), str(l_archivedir)) 
+                  print "Exception: %e" % (str(e))
+                  print
             else:
                retval = system("%s" % (str(notify_ok)))
       elif state == 'offline':
