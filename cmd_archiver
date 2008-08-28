@@ -72,13 +72,12 @@ notify_warning = config.defaults()['notify_warning']
 notify_critical = config.defaults()['notify_critical']
 debug = config.defaults()['debug']
 pgdata = config.defaults()['pgdata']
-pgcontroldata = config.defaults()['pgcontroldata']
 
 # Let's make sure certain items can be reached
 
 def check_config_func():  
    if protocol == 'file':
-      pathvars = [l_archivedir,scp_bin,rsync_bin,pgdata,configfile,pgcontroldata]
+      pathvars = [l_archivedir,scp_bin,rsync_bin,pgdata,configfile]
    else:
       pathvars = [scp_bin,rsync_bin,pgdata,configfile]
    for element in pathvars:
@@ -132,24 +131,22 @@ def check_pgpid_func():
    except:
       return 1
 
+
+### get_pgcontroldata_func doesn't actually do anything yet. This is more
+### for archival purposes so we can remember the regex
+
 def get_pgcontroldata_func():
    try:
       cmd = os.popen("%s %s" % (str(pgcontroldata),str(pgdata)))
       #return cmd.readlines
       for row in cmd:
-         row = re.findall('/^Prior checkpoint location:[ \w\d\.]{1,}$/' , '%s' % (str(row)))
-         print row
-      
+         match = re.search('^Prior checkpoint location: *.{1,}' , '%s' % (str(row)))
+         if match != None:
+            print match
    except OSError, e:
       print
       print "Exception: %s" % (str(e))
       exit(1)
-
-def get_lastcheckpoint_func():
-   lastcheckpoint = get_pgcontroldata_func()
-   print "Last Checkpoint: " + lastcheckpoint
-   search = re.findall('^Prior checkpoint location$','%s' % (str(lastcheckpoint)))
-   print search
 
 if flush:
    check = check_pgpid_func()
@@ -157,12 +154,12 @@ if flush:
       print "ERROR: Can not enter flush mode if PG is already running"
       exit(1)
    scp_transfer = "%s %s %s/pg_xlog/* %s@%s:%s" % (str(scp_bin), str(scp_flags), str(pgdata), str(user), str(slave), str(r_archivedir))
-   push_transfer = """%s -azv --delete -e "ssh %s" %s/* %s@%s:%s/""" % (str(rsync_bin), str(scp_flags), str(l_archivedir), str(user), str(slave), str(r_archivedir))
+   push_transfer = """%s -azv --remove-source-files -e "ssh %s" %s/* %s@%s:%s/""" % (str(rsync_bin), str(scp_flags), str(l_archivedir), str(user), str(slave), str(r_archivedir))
    rsync_transfer = """%s %s/pg_xlog/* -e "ssh %s"  %s@%s:%s""" % (str(rsync_bin), str(pgdata), str(scp_flags), str(user), str(slave), str(r_archivedir))
    file_transfer = "rsync -au %s/pg_xlog/* %s" % (str(pgdata),str(l_archivedir))
 else:
    scp_transfer = "%s %s %s %s@%s:%s" % (str(scp_bin), str(scp_flags), str(archivefile), str(user), str(slave), str(r_archivedir))
-   push_transfer = """%s -azv --delete -e "ssh %s" %s/* %s@%s:%s/""" % (str(rsync_bin), str(scp_flags), str(l_archivedir), str(user), str(slave), str(r_archivedir))
+   push_transfer = """%s -azv --remove-source-files  -e "ssh %s" %s/* %s@%s:%s/""" % (str(rsync_bin), str(scp_flags), str(l_archivedir), str(user), str(slave), str(r_archivedir))
    rsync_transfer = """%s -e "ssh %s" %s %s@%s:%s""" % (str(rsync_bin), str(scp_flags), str(archivefile), str(user), str(slave), str(r_archivedir))
    file_transfer = "rsync %s/%s %s" % (str(pgdata),str(archivefile),str(l_archivedir))
 
@@ -221,8 +218,6 @@ def archive_func():
                try:
                   system("%s" % (push_transfer))
                   system("%s" % (str(notify_ok)))
-                  #get_lastcheckpoint_func()
-                  get_pgcontroldata_func()
                except OSError, e:
                   system("%s %d" % (str(notify_critical), retval))
                   print "Bailing out! Critical Error"
