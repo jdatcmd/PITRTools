@@ -1,0 +1,43 @@
+[DEFAULT]
+; online or offline
+state: online					
+
+; The base database directory
+
+pgdata: /data1/pgsql/data
+
+; where to remotely copy archives
+r_archivedir: /data2/pgsql/archive
+
+; where to locally copy archives (for file mode) 		
+l_archivedir: /data2/pgsql/archive
+
+; the path to the version of scp you want to use		
+scp_bin: /usr/bin/scp
+
+; where is rsync				
+rsync_bin: /usr/bin/rsync			
+
+; can be scp | file | rsync
+protocol: file
+
+; IP of slave					
+slave: 192.168.3.1
+
+; the user that will be using scp				
+user: postgres					
+
+; if scp can't connect in 10 seconds error
+timeout: 10
+
+; command to process in ok					
+notify_ok: echo ok 				
+
+; command to process in warning
+notify_warning:  echo WARNING
+
+; command to process in critical
+notify_critical: echo CRITICAL
+
+; if you want to debug on/off only		 	
+debug: on			
