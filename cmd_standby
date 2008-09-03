@@ -10,23 +10,25 @@ License
 
 Copyright Command Prompt, Inc.
 
+Copyright Command Prompt, Inc.
+
 Permission to use, copy, modify, and distribute this software and its
 documentation for any purpose, without fee, and without a written agreement
 is hereby granted, provided that the above copyright notice and this
 paragraph and the following two paragraphs appear in all copies.
 
-IN NO EVENT SHALL THE COMMAND PROMPT, INC. BE LIABLE TO ANY PARTY FOR
-DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, INCLUDING
+IN NO EVENT SHALL THE UNIVERSITY OF CALIFORNIA BE LIABLE TO ANY PARTY FOR    
+DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, INCLUDING  
 LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS DOCUMENTATION,
-EVEN IF THE COMMAND PROMPT, INC. HAS BEEN ADVISED OF THE POSSIBILITY OF
+EVEN IF THE UNIVERSITY OF CALIFORNIA HAS BEEN ADVISED OF THE POSSIBILITY OF
 SUCH DAMAGE.
 
-THE COMMAND PROMPT, INC. SPECIFICALLY DISCLAIMS ANY WARRANTIES,
+THE UNIVERSITY OF CALIFORNIA SPECIFICALLY DISCLAIMS ANY WARRANTIES,
 INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
 FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS ON AN
-"AS IS" BASIS, AND THE COMMAND PROMPT, INC. HAS NO OBLIGATIONS TO
+"AS IS" BASIS, AND THE UNIVERSITY OF CALIFORNIA HAS NO OBLIGATIONS TO 
 PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-
+   
 """
 
 import popen2
@@ -203,12 +205,20 @@ def ping_check_func():
    query = """'SELECT 1'"""
    if debug == 'on':
       print "%s %s" % (str(ssh_psql),(str(query)))
-   retval = system("%s -c %s\"" % (str(ssh_psql),str(query)))
-   if retval:
+   ping = os.popen("%s -c %s\"" % (str(ssh_psql),str(query)))
+   if debug == 'on':
+      print "DEBUG: " + ping
+   success = ping.readlines()
+   for row in success:
+      row = row.rstrip('\n')
+      if debug == 'on':
+         print "DEBUG: " + row
+   if str(row) != "1":
+      print "ERROR: Processing critical alert"
       notify_critical_func()
       exit(1)
    else:
-      print "Slave, I am your Master\n"
+      print "SUCCESS: Master returned: %s" % (str(row))
       exit(0)
 
 # This function gives us all the non pgdata directories required
@@ -231,26 +241,37 @@ def get_datadirs_func():
 
 def start_backup_func():
    query = """ 'checkpoint' """
-   retval = system("%s -c %s\"" % (str(ssh_psql),str(query)))   
-   if retval:
-      print "Unable to start base backup"
+   checkpoint = os.popen("%s -c %s\"" % (str(ssh_psql),str(query)))   
+   success = checkpoint.readlines()
+   for row in success:
+      row = row.rstrip('\n')
+      if debug == 'on':
+         print "DEBUG: " + row
+   if str(row) != "CHECKPOINT":
+      print "ERROR: Unable to execute CHECKPOINT"
       notify_critical_func()
       exit(1)
    query = """ 'SELECT cmd_pg_start_backup()' """
-   retval = system("%s -c %s\"" % (str(ssh_psql),str(query)))   
-   if retval:
-      print "Unable to start base backup"
-      notify_critical_func()
+   startbackup = os.popen("%s -c %s\"" % (str(ssh_psql),str(query)))   
+   success = startbackup.readlines()
+   for row in success:
+      row = row.rstrip('\n')
+      if debug == 'on':
+         print "DEBUG: cmd_pg_start_backup:  " + row
+   if str(row) != "1":
+      print "ERROR: UNABLE to start base backup"
       exit(1)
-
-# Used to stop the basebackup on the master
 
 def stop_backup_func():
    query = """ 'SELECT cmd_pg_stop_backup()' """
-   retval = system("%s -c %s\"" % (str(ssh_psql),str(query)))
-   if retval:
-      print "Unable to stop base backup"
-      notify_critical_func()
+   stopbackup = os.popen("%s -c %s\"" % (str(ssh_psql),str(query)))
+   success = stopbackup.readlines()
+   for row in success:
+      row = row.rstrip('\n')
+      if debug == 'on':
+         print "DEBUG: cmd_pg_stop_backup: " + row
+   if str(row) != "1":
+      print "ERROR: Unable to stop base backup"
       exit(1)
 
 # Simple function to help ensure we have all paths created for postgresql
@@ -261,6 +282,7 @@ def dbinit_func():
    for row in paths:
       if debug == 'on':
          print row
+         print "foo"
       row = row.rstrip('\n')
       try:
          os.makedirs(row,0700)
@@ -293,10 +315,12 @@ def base_backup_func():
       row = row.rstrip('\n')
       retval = system("%s%s/ %s/" % (copy_dirs,row,row))
       if retval:
+         print
          print "WARNING: Failed to get 0 exit status"
          print "LOG: Check your rsync errors as this may be harmless"
          print "LOG: File vanished: .... is ok"
-         print "NOTICE: You will need to issue a -Astop_basebackup if you deem these errors harmless"
+         print "NOTICE: You will need to issue a -Astop_basebackup if you deem these errors harmelss"
+         print
          exit(1)
 
 # Start postgresql
