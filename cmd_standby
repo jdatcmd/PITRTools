@@ -112,7 +112,7 @@ def check_config_func():
       try:
          os.stat("%s" % (str(element)))
       except OSError, e:
-         print "Config %s:  %s" % (str(element),str(e))
+         print "CONFIG %s:  %s" % (str(element),str(e))
          exit(1)
 
 #
@@ -129,7 +129,7 @@ def check_pgxlog_path_func():
          try:
             os.makedirs(pg_xlog_realpath,0700)
          except OSError, e:
-            print "Error: %s" % (str(e))
+            print "ERROR: %s" % (str(e))
             print "HINT: You may have permission problems"
             print "Make sure that %s has the ability to create the directory %s" % ((str(user), (str(pg_xlog_realpath))))
             exit(1)
@@ -202,7 +202,7 @@ else:
 def ping_check_func():
    query = """'SELECT 1'"""
    if debug == 'on':
-      print "%s %s" % (str(ssh_psql),(str(query)))
+      print "DEBUG: %s %s" % (str(ssh_psql),(str(query)))
    ping = os.popen("%s -c %s\"" % (str(ssh_psql),str(query)))
    if debug == 'on':
       print "DEBUG: " + ping
@@ -226,12 +226,12 @@ def get_datadirs_func():
    try:
       query = """'SELECT * FROM cmd_get_data_dirs()'"""
    except Exception, e:
-      print "Error: Unable to get data directories"
-      print "Hint: Did you apply cmd_standby.sql?"
-      print "Exception: %s" % (str(e))   
+      print "ERROR: Unable to get data directories"
+      print "HINT: Did you apply cmd_standby.sql?"
+      print "EXCEPTION: %s" % (str(e))   
    paths = os.popen("%s -c %s\"" % (str(ssh_psql),str(query)))
    if debug == 'on':    
-         print paths
+         print "DEBUG: " + paths
    return paths.readlines()
 
 # Start a base backup on the master
@@ -279,13 +279,12 @@ def dbinit_func():
    paths = get_datadirs_func()
    for row in paths:
       if debug == 'on':
-         print row
-         print "foo"
+         print "DEBUG: " + row
       row = row.rstrip('\n')
       try:
          os.makedirs(row,0700)
       except OSError, e:
-            print "Error: %s" % (str(e))
+            print "ERROR: %s" % (str(e))
             print "HINT: You may have permission problems"
             print "Make sure that %s has the ability to create the directory: " % (str(user))
             print "%s" % ((str(row)))
@@ -303,12 +302,12 @@ def base_backup_func():
    try:
       query = """'SELECT * FROM cmd_get_data_dirs()'"""
    except Exception, e:
-      print "Error: Unable to get data directories"
-      print "Hint: Did you apply cmd_standby.sql?"
-      print "Exception: %s" % (str(e))   
+      print "ERROR: Unable to get data directories"
+      print "HINT: Did you apply cmd_standby.sql?"
+      print "EXCEPTION: %s" % (str(e))   
    paths = get_datadirs_func()
    if debug == 'on':
-      print paths
+      print "DEBUG: " +  paths
    for row in paths:
       row = row.rstrip('\n')
       retval = system("%s%s/ %s/" % (copy_dirs,row,row))
@@ -317,7 +316,7 @@ def base_backup_func():
          print "WARNING: Failed to get 0 exit status"
          print "LOG: Check your rsync errors as this may be harmless"
          print "LOG: File vanished: .... is ok"
-         print "NOTICE: You will need to issue a -Astop_basebackup if you deem these errors harmelss"
+         print "NOTICE: You will need to issue a -Astop_basebackup if you deem these errors harmless"
          print
          exit(1)
 
