@@ -245,10 +245,10 @@ def start_backup_func():
       row = row.rstrip('\n')
       if debug == 'on':
          print "DEBUG: " + row
-   if str(row) != "CHECKPOINT":
-      print "ERROR: Unable to execute CHECKPOINT"
-      notify_critical_func()
-      exit(1)
+      if str(row) != "CHECKPOINT":
+         print "ERROR: Unable to execute CHECKPOINT"
+         notify_critical_func()
+         exit(1)
    query = """ 'SELECT cmd_pg_start_backup()' """
    startbackup = os.popen("%s -c %s\"" % (str(ssh_psql),str(query)))   
    success = startbackup.readlines()
@@ -256,9 +256,9 @@ def start_backup_func():
       row = row.rstrip('\n')
       if debug == 'on':
          print "DEBUG: cmd_pg_start_backup:  " + row
-   if str(row) != "1":
-      print "ERROR: UNABLE to start base backup"
-      exit(1)
+      if str(row) != "1":
+         print "ERROR: UNABLE to start base backup"
+         exit(1)
 
 def stop_backup_func():
    query = """ 'SELECT cmd_pg_stop_backup()' """
@@ -268,9 +268,9 @@ def stop_backup_func():
       row = row.rstrip('\n')
       if debug == 'on':
          print "DEBUG: cmd_pg_stop_backup: " + row
-   if str(row) != "1":
-      print "ERROR: Unable to stop base backup"
-      exit(1)
+      if str(row) != "1":
+         print "ERROR: Unable to stop base backup"
+         exit(1)
 
 # Simple function to help ensure we have all paths created for postgresql
 #
