@@ -27,6 +27,9 @@ Options:
   -S, --standby         Enter standby mode
 *****
 
+You need to apply cmd_standby.sql to master database before starting 
+standby process on slave.
+
 The process of configuring a standby slave is akin to the following:
 
 ./cmd_standby -C cmd_standby.ini -I
@@ -142,6 +145,4 @@ Absolute paths to the script to fire at each alarm level.
 
 Absolute path to the script to fire at the end of failover. This might be
 to change an IP address on the slave (for example).
-
-
 
