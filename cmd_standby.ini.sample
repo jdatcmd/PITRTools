@@ -33,7 +33,7 @@ master_public_ip: 192.168.3.254
 ; the ip address we should use when processing remote shell		
 master_local_ip: 127.0.0.1
 
-; the use performed initdb	
+; the user performed initdb	
 user: postgres
 
 ; on or off			
