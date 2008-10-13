@@ -3,7 +3,7 @@ CREATE OR REPLACE FUNCTION cmd_get_data_dirs() RETURNS SETOF TEXT AS $$
       FROM pg_catalog.pg_settings s, pg_catalog.pg_tablespace t 
    WHERE s.name = 'data_directory';
 $$ LANGUAGE 'SQL';
-COMMENT ON FUNCTION cmd_get_data_dirs(TEXT) IS 'Returns data paths. The text input is for later when we have to determine between > 8.3';
+COMMENT ON FUNCTION cmd_get_data_dirs() IS 'Returns data paths. The text input is for later when we have to determine between > 8.3';
 
 CREATE OR REPLACE FUNCTION cmd_pg_start_backup() RETURNS INT AS $$
    SELECT pg_start_backup('base_backup');
