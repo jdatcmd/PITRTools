@@ -61,6 +61,8 @@ parser.add_option("-S", "--standby", dest="standby", action="store_true", help="
 
 (options, args) = parser.parse_args()
 
+#define our working variables
+
 configfile = options.configfilename
 base_backup = options.base_backup
 standby = options.standby
@@ -69,17 +71,7 @@ pgctl_action = options.pgctl_action
 ping_check = options.ping_check
 failover = options.failover
 recovertotime = options.recovertotime
-
-# both -C and -f are required
-
-if configfile == None:
-   parser.error("option -C is required")
-   print "\n"   
-
-if recovertotime and not (failover == '999'):
-   parser.error("option -R requires open -F999")
-   print "\n"
-
+   
 # initiate config parser
 config = ConfigParser()
 config.read(configfile)
@@ -104,6 +96,30 @@ hbaconf = config.defaults()['pg_hba_conf']
 action_failover = config.defaults()['action_failover']
 numarchives = config.defaults()['numarchives']
 
+# Validate the command line
+
+def command_line_check_func():
+   if configfile == None:
+      print
+      parser.error("option -C is required")
+      print
+
+   if recovertotime and not (failover == '999'):
+      print
+      parser.error("option -R requires open -F999")
+      print
+      
+   if action:
+      print
+      valid_action = ['start', 'stop', 'stop_basebackup','start_basebackup']
+      print
+   
+   if action not in valid_action:
+      print
+      parser.error("option -A requires one of start, stop, stop_basebackup or start_basebackup")
+      print 
+
+
 # Let's make sure executables can be reached
 
 def check_config_func():
@@ -114,7 +130,7 @@ def check_config_func():
       except OSError, e:
          print "CONFIG %s:  %s" % (str(element),str(e))
          exit(1)
-
+         
 #
 # Check if our pg_xlog is a link or directory and react accordingly
 #
@@ -136,7 +152,7 @@ def check_pgxlog_path_func():
    else:
       exit(0)
       
-# Notifications
+# Notifications 
 
 def notify_ok_func():
    if config.defaults()['notify_ok']:
@@ -183,6 +199,7 @@ if not master_local_ip:
    psql_connect =  """ "%s -A -t -U%s -p%s -dpostgres """ % (str(psql), str(user), str(port))
 else:
    psql_connect =  """ "%s -A -t -U%s -h%s -p%s -dpostgres """ % (str(psql), str(user), str(master_local_ip), str(port))
+
 copy_dirs = "%s %s --exclude=pg_log/ --exclude=postgresql.conf --exclude=pg_hba.conf --exclude=postmaster.pid -e ssh %s@%s:" % (str(rsync), str(rsync_flags), str(user), str(master_public_ip))
 ssh_psql = ssh_connect + psql_connect
 

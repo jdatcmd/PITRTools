@@ -146,7 +146,7 @@ def get_pgcontroldata_func():
             print match
    except OSError, e:
       print
-      print "Exception: %s" % (str(e))
+      print "EXCEPTION: %s" % (str(e))
       exit(1)
 
 if flush:
@@ -221,7 +221,7 @@ def archive_func():
                   system("%s %d" % (str(notify_critical), retval))
                   print 
                   print "Unable to copy file %s to %s " % (str(archivefile), str(l_archivedir)) 
-                  print "Exception: %e" % (str(e))
+                  print "EXCEPTION: %e" % (str(e))
                   print
             else:
                retval = system("%s" % (str(notify_ok)))
@@ -245,7 +245,7 @@ def push_func():
                system("%s %d" % (str(notify_critical), retval))
                print "Bailing out! Critical Error"
                print
-               print "Exception: %s" % (str(e))
+               print "EXCEPTION: %s" % (str(e))
 
 if flush:
    flush_check_func()
