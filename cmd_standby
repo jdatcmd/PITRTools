@@ -109,15 +109,14 @@ def command_line_check_func():
       parser.error("option -R requires open -F999")
       print
       
-   if action:
+   if pgctl_action:
       print
       valid_action = ['start', 'stop', 'stop_basebackup','start_basebackup']
       print
-   
-   if action not in valid_action:
-      print
-      parser.error("option -A requires one of start, stop, stop_basebackup or start_basebackup")
-      print 
+      if pgctl_action not in valid_action:
+         print
+         parser.error("option -A requires one of start, stop, stop_basebackup or start_basebackup")
+         print 
 
 
 # Let's make sure executables can be reached
@@ -420,9 +419,10 @@ def failover_action_func():
       else:
          exit(0)
  
-# Before we do anything, let's check the config
+# Before we do anything, let's check the config and command line
 
 check_config_func()
+command_line_check_func()
 
 if dbinit:
    check = check_pgpid_func()
