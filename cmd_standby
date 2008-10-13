@@ -34,7 +34,7 @@ import os
 import shutil
 import sys
 
-# before we do anything, let's jsut check you we are
+# before we do anything, let's just check you we are
 
 if os.geteuid()==0:
     sys.exit("\nBad Mojo... no root access for this script\n")
