@@ -83,9 +83,9 @@ The absolute path to the ssh binary.
 
 The absolute path to the rsync binary.
 
- * psql: /usr/lib/postgresql/8.3/bin/psql
+ * r_psql: /usr/lib/postgresql/8.3/bin/psql
 
-The absolute path to the psql binary.
+The absolute path to the psql binary on the master.
 
  * pg_standby: /usr/lib/postgresql/8.3/bin/pg_standby
 
