@@ -60,10 +60,9 @@ config.read(configfile)
 # Set up our keys
 debug = 'on'
 state = config.defaults()['state']
-scp_bin = config.defaults()['scp_bin']
 rsync_bin = config.defaults()['rsync_bin']
 protocol = config.defaults()['protocol']
-slave = config.defaults()['slave']
+slaves = config.defaults()['slaves']
 user = config.defaults()['user']
 r_archivedir = config.defaults()['r_archivedir']
 l_archivedir = config.defaults()['l_archivedir']
@@ -74,13 +73,27 @@ notify_critical = config.defaults()['notify_critical']
 debug = config.defaults()['debug']
 pgdata = config.defaults()['pgdata']
 
+
+def generate_slaves_list_func():
+   slaves = config.defaults()['slaves']
+   s = str(slaves)
+   s.replace("'","")
+   slaves = s.split(",")
+   if debug = 'on':
+      print "Notice: " + str(slaves)
+   return slaves
+
+generate_slaves_list_func()
+
 # Let's make sure certain items can be reached
+
+exit;
 
 def check_config_func():  
    if protocol == 'file':
-      pathvars = [l_archivedir,scp_bin,rsync_bin,pgdata,configfile]
+      pathvars = [l_archivedir,rsync_bin,pgdata,configfile]
    else:
-      pathvars = [scp_bin,rsync_bin,pgdata,configfile]
+      pathvars = [rsync_bin,pgdata,configfile]
    for element in pathvars:
       try:
          os.stat("%s" % (str(element)))
@@ -154,11 +167,9 @@ if flush:
    if check == 0:
       print "ERROR: Can not enter flush mode if PG is already running"
       exit(1)
-   scp_transfer = "%s %s %s/pg_xlog/* %s@%s:%s" % (str(scp_bin), str(scp_flags), str(pgdata), str(user), str(slave), str(r_archivedir))
    rsync_transfer = """%s %s/pg_xlog/* -e "ssh %s"  %s@%s:%s""" % (str(rsync_bin), str(pgdata), str(scp_flags), str(user), str(slave), str(r_archivedir))
    file_transfer = "rsync -au %s/pg_xlog/* %s" % (str(pgdata),str(l_archivedir))
 else:
-   scp_transfer = "%s %s %s %s@%s:%s" % (str(scp_bin), str(scp_flags), str(archivefile), str(user), str(slave), str(r_archivedir))
    push_transfer = """%s -azv --remove-source-files  -e "ssh %s" %s/* %s@%s:%s/""" % (str(rsync_bin), str(scp_flags), str(l_archivedir), str(user), str(slave), str(r_archivedir))
    rsync_transfer = """%s -e "ssh %s" %s %s@%s:%s""" % (str(rsync_bin), str(scp_flags), str(archivefile), str(user), str(slave), str(r_archivedir))
    file_transfer = "rsync %s/%s %s" % (str(pgdata),str(archivefile),str(l_archivedir))
@@ -181,9 +192,7 @@ def flush_check_func():
       exit(0)
 
 if debug:
-   if protocol == 'scp':
-      print scp_transfer
-   elif protocol == 'rsync':
+   if protocol == 'rsync':
       print rsync_transfer
    elif protocol == 'file':
       if push:
@@ -193,15 +202,6 @@ if debug:
 
 def archive_func():
       if state == 'online':
-         if protocol == 'scp':
-            if debug == 'on':
-               print "SSH: %s " % (scp_transfer)
-            retval = system("%s" % (scp_transfer))
-            if retval:
-               retval = system("%s %d" % (str(notify_critical), retval))
-               print "Bailing out! Critical Error"
-            else:
-               retval = system("%s" % (str(notify_ok)))
          if protocol == 'rsync':
             if debug == 'on':
                print "RSYNC: %s " % (rsync_transfer)

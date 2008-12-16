@@ -71,15 +71,13 @@ r_archivedir: /data2/pgsql/archive
 The remote archive directory, e.g; the directory that will accept all
 archive files to be restored by the standby server.
 
-; where to locally copy archives (for file mode) 		
+; where to locally copy archives
 l_archivedir: /data2/pgsql/archive
 
 The local archive directory. This is used when you want to archive all
 files locally. For example, if you are using an NFS mount for the standby
-server to get its files.
-
-; the path to the version of scp you want to use		
-scp_bin: /usr/bin/scp
+server to get its files. It is also used as a queue for when archiving fails
+to a particular slave
 
 Must point to the actual binary of scp.
 
@@ -89,24 +87,25 @@ rsync_bin: /usr/bin/rsync
 Must point to the actual binary of rsync. We use rsync over ssh, so don't
 bother with an rsync server.
 
-; can be scp | file | rsync
+; can be file | rsync
 protocol: rsync
 
 Rsync is absolutely preferred due to its error checking and guarantee of 
 delivery.
 
 ; IP of slave					
-slave: 192.168.3.1
+slaves: 192.168.3.1 or slaves: 192.168.3.1,192.168.4.1
 
 This is the ip address of the standby server. A hostname/FQDN would work as well.
+It must be a command separated list for multiple slaves.
 
-; the user that will be using scp				
+; the user that will be using rsync				
 user: postgres					
 
-The unix shell user that is using scp. This is the user that must have ssh 
+The unix shell user that is using rsync. This is the user that must have ssh 
 keys configured between the master and slave.
 
-; if scp can't connect in 10 seconds error
+; if rsync can't connect in 10 seconds error
 timeout: 10
 
 The SSH timeout. If it takes > timeout to begin the transfer the archiver will
