@@ -47,10 +47,10 @@ parser.add_option("-P", "--push", dest="push", action="store_true", help="Push a
 
 (options, args) = parser.parse_args()
 
-archive = options.archive
 archivefile = options.archivefilename
 configfile = options.configfilename
 flush = options.flush
+init = options.init
 push = options.push
 
 # initiate config parser 
@@ -72,10 +72,14 @@ notify_critical = config.defaults()['notify_critical']
 debug = config.defaults()['debug']
 pgdata = config.defaults()['pgdata']
 
-# We now support multiple slaves (see the README) in order do that properly
-# we have to break up the string and turn it into a list
 
-def generate_slaves_list_func():
+
+def generate_slave_list_func():
+""" 
+We now support multiple slaves (see the README) in order do that properly 
+we have to break up the string and turn it into a list
+"""
+
    slaves = config.defaults()['slaves']
    s = str(slaves)
    s.replace("'","")
@@ -84,24 +88,28 @@ def generate_slaves_list_func():
       print "Notice: " + str(slaves)
    return slaves
 
-# Initialize the local queues so we can check each directory for left over
-# files
+
 
 def init_env_func():
+"""
+Initialize the local queues so we can check each directory for left
+over files
+"""
    l_archivedir = config.defaults()['l_archivedir']
+   queues = generate_slave_list_func()
    try:
-      os.mkdir("%s") % (l_archivedir)
-      for host in generate_slave_list_func():
+      for host in queues:
          queue = l_archivedir + "/" + host
-         os.mkdir("%s" % (queue))
+         os.makedirs("%s" % (queue))
    except OSError, e:
       print "ERROR: Can not make queue directories"
       print "EXCEPTION: %s" % (str(e))
       exit(1);
 
-# Let's make sure certain items can be reached
-
 def check_config_func():  
+""" 
+Let's make sure that our directories and executables exist 
+"""
    if protocol == 'file':
       pathvars = [l_archivedir,rsync_bin,pgdata,configfile]
    else:
@@ -115,6 +123,11 @@ def check_config_func():
 
 
 def check_pgpid_func():
+
+"""
+Checks to see if postgresql is running
+"""
+
    pidfile = '%s/postmaster.pid' % (str(pgdata))
    try:
       check = os.stat(pidfile)
@@ -127,10 +140,14 @@ def check_pgpid_func():
       return 1
 
 
-### get_pgcontroldata_func doesn't actually do anything yet. This is more
-### for archival purposes so we can remember the regex
 
 def get_pgcontroldata_func():
+
+"""
+get_pgcontroldata_func doesn't actually do anything yet. This is more
+for archival purposes so we can remember the regex
+"""
+
    try:
       cmd = os.popen("%s %s" % (str(pgcontroldata),str(pgdata)))
       #return cmd.readlines
@@ -145,6 +162,10 @@ def get_pgcontroldata_func():
 
 
 def flush_check_func():
+"""
+Simple function to make sure we require input before flushing a system
+"""
+
    print "\n\n"
    print "Warning! Flushing all logs will cause your slave to exit"
    print "Standby and start up. Please verify that this is exactly what you desire.\n\n"""
@@ -162,6 +183,11 @@ def flush_check_func():
       exit(0)
 
 def check_queue_func():
+"""
+Checks the local queue for files to send to slaves *before* sending current
+transaction log
+"""
+
   if state == 'online':
      if debug == 'on':
         print "QUEUE CHECK: %s " % (queue_transfer)
@@ -171,6 +197,9 @@ def check_queue_func():
            exit(1)
    
 def archive_func():
+"""
+The main archive function
+"""
    if state == 'online':
       if protocol == 'rsync':
          if debug == 'on':
@@ -204,6 +233,10 @@ def archive_func():
       exit(1)
 
 def push_func():
+"""
+If we are push archiving"
+"""
+
    if protocol == 'file':
       if push:
          if debug == 'on':
@@ -219,7 +252,8 @@ def push_func():
 
 
 # Before any actions, we check the config
-check_config_func()
+if not init:
+   check_config_func()
 
 # Some command line checking
 
@@ -248,26 +282,25 @@ else:
 if init:
    print "We are initializing queues, one moment.\n"
    init_env_func()
-
-# If we are flushing archives
-if flush:
-   rsync_transfer = """%s %s/pg_xlog/* -e "ssh %s"  %s@%s:%s""" % (str(rsync_bin), str(pgdata), str(scp_flags), str(user), str(slave), str(r_archivedir))
-   file_transfer = "rsync -au %s/pg_xlog/* %s" % (str(pgdata),str(l_archivedir))
-   flush_check_func()
-   check = check_pgpid_func()
-   if check == 0:
-      print "ERROR: Can not enter flush mode if PG is already running"
-      exit(1)
-   archive_func()
-
-# If we aren't flushing we are either pushing or just plain old archiving
-else:
-   push_transfer = """%s -azv --remove-source-files  -e "ssh %s" %s/* %s@%s:%s/""" % (str(rsync_bin), str(scp_flags), str(l_archivedir), str(user), str(slave), str(r_archivedir))
-   rsync_transfer = """%s -e "ssh %s" %s %s@%s:%s""" % (str(rsync_bin), str(scp_flags), str(archivefile), str(user), str(slave), str(r_archivedir))
-   file_transfer = "rsync %s/%s %s" % (str(pgdata),str(archivefile),str(l_archivedir))
-   if push:
-      push_func()
    else:
-      archive_func()
+      # If we are flushing archives
+      if flush:
+         rsync_transfer = """%s %s/pg_xlog/* -e "ssh %s"  %s@%s:%s""" % (str(rsync_bin), str(pgdata), str(scp_flags), str(user), str(slave), str(r_archivedir))
+         file_transfer = "rsync -au %s/pg_xlog/* %s" % (str(pgdata),str(l_archivedir))
+         flush_check_func()
+         check = check_pgpid_func()
+         if check == 0:
+            print "ERROR: Can not enter flush mode if PG is already running"
+            exit(1)
+         archive_func()
+         # If we aren't flushing we are either pushing or just plain old archiving
+        else:
+           push_transfer = """%s -azv --remove-source-files  -e "ssh %s" %s/* %s@%s:%s/""" % (str(rsync_bin), str(scp_flags), str(l_archivedir), str(user), str(slave), str(r_archivedir))
+           rsync_transfer = """%s -e "ssh %s" %s %s@%s:%s""" % (str(rsync_bin), str(scp_flags), str(archivefile), str(user), str(slave), str(r_archivedir))
+           file_transfer = "rsync %s/%s %s" % (str(pgdata),str(archivefile),str(l_archivedir))
+           if push:
+              push_func()
+           else:
+              archive_func()
 
 
