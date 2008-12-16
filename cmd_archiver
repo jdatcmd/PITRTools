@@ -43,6 +43,7 @@ parser.add_option("-A", "--archive", dest="archive", action="store_true", help="
 parser.add_option("-F", "--file", dest="archivefilename", action="store", help="Archive file", metavar="FILE")
 parser.add_option("-C", "--config", dest="configfilename", action="store",  help="the name of the archiver config file", metavar="FILE")
 parser.add_option("-f", "--flush", dest="flush", action="store_true", help="Flush all remaining archives to slave")
+parser.add_option("-I", "--init", dest="init", action="store_true", help="Initialize master environment")
 parser.add_option("-P", "--push", dest="push", action="store_true", help="Push archives to remote host")
 
 (options, args) = parser.parse_args()
@@ -58,7 +59,6 @@ config = ConfigParser()
 config.read(configfile)
 
 # Set up our keys
-debug = 'on'
 state = config.defaults()['state']
 rsync_bin = config.defaults()['rsync_bin']
 protocol = config.defaults()['protocol']
@@ -79,15 +79,23 @@ def generate_slaves_list_func():
    s = str(slaves)
    s.replace("'","")
    slaves = s.split(",")
-   if debug = 'on':
+   if debug == 'on':
       print "Notice: " + str(slaves)
    return slaves
 
-generate_slaves_list_func()
+def init_env_func():
+   l_archivedir = config.defaults()['l_archivedir']
+   try:
+      os.mkdir("%s") % (l_archivedir)
+      for host in generate_slave_list_func():
+         queue = l_archivedir + "/" + host
+         os.mkdir("%s" % (queue))
+   except OSError, e:
+      print "ERROR: Can not make queue directories"
+      print "EXCEPTION: %s" % (str(e))
+   exit(1);
 
 # Let's make sure certain items can be reached
-
-exit;
 
 def check_config_func():  
    if protocol == 'file':
@@ -162,17 +170,7 @@ def get_pgcontroldata_func():
       print "EXCEPTION: %s" % (str(e))
       exit(1)
 
-if flush:
-   check = check_pgpid_func()
-   if check == 0:
-      print "ERROR: Can not enter flush mode if PG is already running"
-      exit(1)
-   rsync_transfer = """%s %s/pg_xlog/* -e "ssh %s"  %s@%s:%s""" % (str(rsync_bin), str(pgdata), str(scp_flags), str(user), str(slave), str(r_archivedir))
-   file_transfer = "rsync -au %s/pg_xlog/* %s" % (str(pgdata),str(l_archivedir))
-else:
-   push_transfer = """%s -azv --remove-source-files  -e "ssh %s" %s/* %s@%s:%s/""" % (str(rsync_bin), str(scp_flags), str(l_archivedir), str(user), str(slave), str(r_archivedir))
-   rsync_transfer = """%s -e "ssh %s" %s %s@%s:%s""" % (str(rsync_bin), str(scp_flags), str(archivefile), str(user), str(slave), str(r_archivedir))
-   file_transfer = "rsync %s/%s %s" % (str(pgdata),str(archivefile),str(l_archivedir))
+
 
 def flush_check_func():
    print "\n\n"
@@ -191,30 +189,30 @@ def flush_check_func():
       print "Your options are Yes and No"
       exit(0)
 
-if debug:
-   if protocol == 'rsync':
-      print rsync_transfer
-   elif protocol == 'file':
-      if push:
-         print push_transfer
-      else:
-         print file_transfer
-
+def check_queue_func():
+  if state == 'online':
+     if debug == 'on':
+        print "QUEUE CHECK: %s " % (queue_transfer)
+        retval = system("%s" % (queue_transfer))
+        if retval:
+           retval = system("%s %d" % (str(notify_critical), retval))
+           exit(1)
+   
 def archive_func():
-      if state == 'online':
-         if protocol == 'rsync':
+   if state == 'online':
+      if protocol == 'rsync':
+         if debug == 'on':
+            print "RSYNC: %s " % (rsync_transfer)
+         retval = system("%s" % (rsync_transfer))
+         if retval:
+            retval = system("%s %d" % (str(notify_critical), retval))
+            print "Bailing out! Critical Error"
+         else:
+            retval = system("%s" % (str(notify_ok)))
+      if protocol == 'file':
+         if not push:
             if debug == 'on':
-               print "RSYNC: %s " % (rsync_transfer)
-            retval = system("%s" % (rsync_transfer))
-            if retval:
-               retval = system("%s %d" % (str(notify_critical), retval))
-               print "Bailing out! Critical Error"
-            else:
-               retval = system("%s" % (str(notify_ok)))
-         if protocol == 'file':
-            if not push:
-               if debug == 'on':
-                  print "FILE: %s" % (file_transfer)
+               print "FILE: %s" % (file_transfer)
                try:
                   system("%s" % (file_transfer))
                except OSError, e:
@@ -225,13 +223,13 @@ def archive_func():
                   print
             else:
                retval = system("%s" % (str(notify_ok)))
-      elif state == 'offline':
-         print "ARCHIVER: We are offline, queuing archives"
-         system("%s" % (str(notify_warning)))
-         exit(1)
-      else:
-         print "I must either be online or offline. There is no NULL here"
-         exit(1)
+   elif state == 'offline':
+      print "ARCHIVER: We are offline, queuing archives"
+      system("%s" % (str(notify_warning)))
+      exit(1)
+   else:
+      print "I must either be online or offline. There is no NULL here"
+      exit(1)
 
 def push_func():
    if protocol == 'file':
@@ -248,11 +246,21 @@ def push_func():
                print "EXCEPTION: %s" % (str(e))
 
 if flush:
+   rsync_transfer = """%s %s/pg_xlog/* -e "ssh %s"  %s@%s:%s""" % (str(rsync_bin), str(pgdata), str(scp_flags), str(user), str(slave), str(r_archivedir))
+   file_transfer = "rsync -au %s/pg_xlog/* %s" % (str(pgdata),str(l_archivedir))
    flush_check_func()
-   check_pgpid_func()
+   check = check_pgpid_func()
+   if check == 0:
+      print "ERROR: Can not enter flush mode if PG is already running"
+      exit(1)
    archive_func()
-elif push:
-   push_func()
 else:
-   archive_func()
+   push_transfer = """%s -azv --remove-source-files  -e "ssh %s" %s/* %s@%s:%s/""" % (str(rsync_bin), str(scp_flags), str(l_archivedir), str(user), str(slave), str(r_archivedir))
+   rsync_transfer = """%s -e "ssh %s" %s %s@%s:%s""" % (str(rsync_bin), str(scp_flags), str(archivefile), str(user), str(slave), str(r_archivedir))
+   file_transfer = "rsync %s/%s %s" % (str(pgdata),str(archivefile),str(l_archivedir))
+   if push:
+      push_func()
+   else:
+      archive_func()
+
 

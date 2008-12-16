@@ -37,6 +37,10 @@ Note that the use of --flush is a one way trip. Once used, you must
 bring your slave into production or you will have to issue a new base
 backup.
 
+--init
+
+Used to create the appropriate archive/queue file directories
+
 --push:
 
 The push option is designed to work with the protocol: file option. 
