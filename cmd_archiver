@@ -39,7 +39,6 @@ from optparse import OptionParser
 usage = "usage: %prog [options] arg1 arg2"
 parser = OptionParser(usage=usage)
 
-parser.add_option("-A", "--archive", dest="archive", action="store_true", help="Whether or not to archive")
 parser.add_option("-F", "--file", dest="archivefilename", action="store", help="Archive file", metavar="FILE")
 parser.add_option("-C", "--config", dest="configfilename", action="store",  help="the name of the archiver config file", metavar="FILE")
 parser.add_option("-f", "--flush", dest="flush", action="store_true", help="Flush all remaining archives to slave")
@@ -73,6 +72,8 @@ notify_critical = config.defaults()['notify_critical']
 debug = config.defaults()['debug']
 pgdata = config.defaults()['pgdata']
 
+# We now support multiple slaves (see the README) in order do that properly
+# we have to break up the string and turn it into a list
 
 def generate_slaves_list_func():
    slaves = config.defaults()['slaves']
@@ -82,6 +83,9 @@ def generate_slaves_list_func():
    if debug == 'on':
       print "Notice: " + str(slaves)
    return slaves
+
+# Initialize the local queues so we can check each directory for left over
+# files
 
 def init_env_func():
    l_archivedir = config.defaults()['l_archivedir']
@@ -93,7 +97,7 @@ def init_env_func():
    except OSError, e:
       print "ERROR: Can not make queue directories"
       print "EXCEPTION: %s" % (str(e))
-   exit(1);
+      exit(1);
 
 # Let's make sure certain items can be reached
 
@@ -108,37 +112,6 @@ def check_config_func():
       except OSError, e:
          print "Config %s:  %s" % (str(element),str(e))
          exit(1)
-
-check_config_func()
-
-# Some command line checking
-
-if flush:
-   if configfile == None:
-      parser.error("option -c is required")
-      print "\n"   
-
-if push:
-   if protocol != 'file':
-      parser.error("option -P requires a protocol of file")
-      print "\n"
-
-if archive:
-   if configfile == None:
-      parser.error("option -c is required")
-   if flush:
-      print "ERROR: You can not flush and archive"
-      exit(1)
-
-if debug == 'on':
-   print config.defaults().keys()
-   
-# set up our transfer commands
-
-if debug == 'on':
-   scp_flags = "-vvv -o ConnectTimeout=%s -o StrictHostKeyChecking=no" % (str(timeout))
-else:
-   scp_flags = "-o ConnectTimeout=%s -o StrictHostKeyChecking=no" % (str(timeout))
 
 
 def check_pgpid_func():
@@ -169,7 +142,6 @@ def get_pgcontroldata_func():
       print
       print "EXCEPTION: %s" % (str(e))
       exit(1)
-
 
 
 def flush_check_func():
@@ -245,6 +217,39 @@ def push_func():
                print
                print "EXCEPTION: %s" % (str(e))
 
+
+# Before any actions, we check the config
+check_config_func()
+
+# Some command line checking
+
+if flush:
+   if configfile == None:
+      parser.error("option -c is required")
+      print "\n"   
+
+if push:
+   if protocol != 'file':
+      parser.error("option -P requires a protocol of file")
+      print "\n"
+
+if debug == 'on':
+   print config.defaults().keys()
+   
+# set up our transfer commands
+
+if debug == 'on':
+   scp_flags = "-vvv -o ConnectTimeout=%s -o StrictHostKeyChecking=no" % (str(timeout))
+else:
+   scp_flags = "-o ConnectTimeout=%s -o StrictHostKeyChecking=no" % (str(timeout))
+
+# If we are initializing the environment
+
+if init:
+   print "We are initializing queues, one moment.\n"
+   init_env_func()
+
+# If we are flushing archives
 if flush:
    rsync_transfer = """%s %s/pg_xlog/* -e "ssh %s"  %s@%s:%s""" % (str(rsync_bin), str(pgdata), str(scp_flags), str(user), str(slave), str(r_archivedir))
    file_transfer = "rsync -au %s/pg_xlog/* %s" % (str(pgdata),str(l_archivedir))
@@ -254,6 +259,8 @@ if flush:
       print "ERROR: Can not enter flush mode if PG is already running"
       exit(1)
    archive_func()
+
+# If we aren't flushing we are either pushing or just plain old archiving
 else:
    push_transfer = """%s -azv --remove-source-files  -e "ssh %s" %s/* %s@%s:%s/""" % (str(rsync_bin), str(scp_flags), str(l_archivedir), str(user), str(slave), str(r_archivedir))
    rsync_transfer = """%s -e "ssh %s" %s %s@%s:%s""" % (str(rsync_bin), str(scp_flags), str(archivefile), str(user), str(slave), str(r_archivedir))
