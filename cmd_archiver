@@ -185,15 +185,33 @@ def flush_check_func():
       print "Your options are Yes and No"
       exit(0)
 
+def list_queue_func():
+   """
+   We only want to process archives for queues that have files, so we check
+   and only return a queue/slave that has files to be shipped.
+   """
+   queue = generate_slave_list_func()
+   for slave in queue:
+      queuedir = l_archivedir + "/" + str(slave)
+      list_archives = os.listdir(queuedir)
+      if list_archives:
+         if debug == 'on':
+            print "Slave: " + slave + " " + str(list_archives)
+   return slave
+
 def send_queue_func():
    """
    We are called before normal archive process in order to send queue files that have not been shipped yet.
    """
-   queue = generate_slave_list_func()
-   for slave in queue:
+   slave = list_queue_func()
+   if debug == 'on':
+      print "NOTICE: processing " + slave
+   for host in slave:
       queue_dir = l_archivedir + "/" + str(slave)
       queue_transfer =  """%s -azq --remove-source-files  -e "ssh %s" %s/ %s@%s:%s/""" % (str(rsync_bin), str(ssh_flags), str(queue_dir), str(user), str(slave), str(r_archivedir))
       retval = system(queue_transfer)
+      if debug == 'on':
+         print queue_transfer
       return retval
 
 def archive_func():

@@ -37,4 +37,4 @@ notify_warning:  echo WARNING
 notify_critical: echo CRITICAL
 
 ; if you want to debug on/off only		 	
-debug: off
+debug: on
