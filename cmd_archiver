@@ -202,51 +202,72 @@ def list_queue_func():
 def send_queue_func():
    """
    We are called before normal archive process in order to send queue files that have not been shipped yet.
+   If we have to transfer and we error we return the slave that failed. 
    """
    slave = list_queue_func()
    if debug == 'on':
       print "NOTICE: processing " + slave
-   for host in slave:
+   for queue in slave:
       queue_dir = l_archivedir + "/" + str(slave)
       queue_transfer =  """%s -azq --remove-source-files  -e "ssh %s" %s/ %s@%s:%s/""" % (str(rsync_bin), str(ssh_flags), str(queue_dir), str(user), str(slave), str(r_archivedir))
       retval = system(queue_transfer)
       if debug == 'on':
          print queue_transfer
-      return retval
+      if retval:
+         return queue
 
 def archive_func():
    """
    The main archive function. 
+   First we check the queue. If there are files in the queue we try to send
+   them.
+
+   If we can't send the files from the queue, we determining which slaves
+   can not send files. The archiver then automatically queues all logs for
+   those slaves which are not sending until they can send.
    """
    if protocol == 'rsync':
-      """ First we send the queue files (if any). If we can't we exit """
-      retval = send_queue_func()
-      if retval != 0:
-         print "ERROR: Unable to send queued archived files"
+      """ 
+      First we send the queue files (if any). If we can't we exit 
+      """
+
+      queue = send_queue_func()
+      if queue:
+         print "ERROR: Unable to send queued archived files, queueing"
          retval = system("%s %d" % (str(notify_warning), retval))
-         exit(1)
-      queue = generate_slave_list_func()
-      for slave in queue:
-         queue_dir = l_archivedir + "/" + str(slave)
-         rsync_transfer = """%s -zq -e "ssh %s" %s %s@%s:%s""" % (str(rsync_bin), str(ssh_flags), str(archivefile), str(user), str(slave), str(r_archivedir))
-         retval = system("%s" % (rsync_transfer))
-         if retval:
-            queue_transfer = """%s %s %s""" % (str(rsync_bin), str(archivefile), str(queue_dir)) 
-	    retval = system(queue_transfer)
-            if retval:
-               system("%s %d" % (str(notify_critical), retval))
-               exit(1)
-            else:
-               '''
-               We exit(0) here becuase we have successfully archived "somewhere" but we still warn that something is going on so people can look in on things
-               '''
-               retval = system("%s %d" % (str(notify_warning), retval))
-               exit(0)
-         retval = system("%s" % (rsync_transfer))
-         if retval:
-            print "Bailing out! Critical Error"
-         else:
-            retval = system("%s" % (str(notify_ok)))
+         slaves = generate_slave_list_func()
+         for host in slaves:
+            queue_dir = l_archive + "/" + str(host)
+
+            """ If the host returned is in the list, we automatically
+            archive to the queue.
+            """
+
+            if host = queue:
+               queue_transfer = """%s %s %s""" % (str(rsync_bin), str(archivefile), str(queue_dir)) 
+               retval = system(queue_transfer)
+               if retval:
+                  system("%s %d" % (str(notify_critical), retval))
+                  exit(1)
+
+            """ If the host returned is not in the list, we attempt to
+            archive normally. If we can not, we archive to the queue. If we
+            can not archive to the queue, we exit critical.
+            """
+
+            elif host != queue:
+               rsync_transfer = """%s -zq -e "ssh %s" %s %s@%s:%s""" % (str(rsync_bin), str(ssh_flags), str(archivefile), str(user), str(slave), str(r_archivedir))
+               retval = system("%s" % (rsync_transfer))
+               if retval:
+                  queue_transfer = """%s %s %s""" % (str(rsync_bin), str(archivefile), str(queue_dir)) 
+                  retval = system(queue_transfer)
+                  if retval:
+                     print "FATAL: Unabled to rsync_transfer or queue_transfer"
+                     system("%s %d" % (str(notify_critical), retval))
+                     exit(1)
+                  else:
+                     retval = system("%s %d" % (str(notify_warning), retval))
+                     exit(0)
    if protocol == 'file':
       if not push:
          if debug == 'on':
