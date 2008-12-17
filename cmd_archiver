@@ -243,7 +243,7 @@ def archive_func():
             archive to the queue.
             """
 
-            if host = queue:
+            if host == queue:
                queue_transfer = """%s %s %s""" % (str(rsync_bin), str(archivefile), str(queue_dir)) 
                retval = system(queue_transfer)
                if retval:
@@ -255,7 +255,7 @@ def archive_func():
             can not archive to the queue, we exit critical.
             """
 
-            elif host != queue:
+            else:
                rsync_transfer = """%s -zq -e "ssh %s" %s %s@%s:%s""" % (str(rsync_bin), str(ssh_flags), str(archivefile), str(user), str(slave), str(r_archivedir))
                retval = system("%s" % (rsync_transfer))
                if retval:
@@ -268,7 +268,12 @@ def archive_func():
                   else:
                      retval = system("%s %d" % (str(notify_warning), retval))
                      exit(0)
+
+  
    if protocol == 'file':
+   """
+   If we are just archiving to files
+   """
       if not push:
          if debug == 'on':
             print "FILE: %s" % (file_transfer)
