@@ -5,7 +5,6 @@ push mechanism  for updating archives.
 
 Options:
   -h, --help            show this help message and exit
-  -A, --archive         Whether or not to archive
   -F FILE, --file=FILE  Archive file
   -C FILE, --config=FILE
                         the name of the archiver config file

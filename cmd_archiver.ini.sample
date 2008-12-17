@@ -4,22 +4,19 @@ state: online
 
 ; The base database directory
 
-pgdata: /data1/pgsql/data
+pgdata: /var/lib/postgresql/8.3/main
 
 ; where to remotely copy archives
-r_archivedir: /data2/pgsql/archive
+r_archivedir: /var/lib/postgresql/archive
 
 ; where to locally copy archives
 l_archivedir: /var/lib/postgresql/archive
-
-; the path to the version of scp you want to use		
-scp_bin: /usr/bin/scp
 
 ; where is rsync				
 rsync_bin: /usr/bin/rsync			
 
 ; can be scp | file | rsync
-protocol: file
+protocol: rsync
 
 ; IP of slave					
 slaves: 10.1.2.5,10.1.3.5
@@ -31,7 +28,7 @@ user: postgres
 timeout: 10
 
 ; command to process in ok					
-notify_ok: echo ok 				
+notify_ok: echo OK
 
 ; command to process in warning
 notify_warning:  echo WARNING
@@ -40,4 +37,4 @@ notify_warning:  echo WARNING
 notify_critical: echo CRITICAL
 
 ; if you want to debug on/off only		 	
-debug: on			
+debug: off
