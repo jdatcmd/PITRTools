@@ -87,14 +87,14 @@ def generate_slave_list_func():
    We now support multiple slaves (see the README) in order do that properly 
    we have to break up the string and turn it into a list
    """
-
+   
    slaves = config.defaults()['slaves']
    s = str(slaves)
    s.replace("'","")
    slaves = s.split(",")
    if debug == 'on':
-      print "NOTICE: Your slaves are: "
-      print "NOTICE: " + str(slaves)
+      print "NOTICE: generate_slave_list_func()"
+      print "NOTICE: Your slaves are: " + str(slaves)
    return slaves
 
 def init_env_func():
@@ -102,6 +102,8 @@ def init_env_func():
    Initialize the local queues so we can check each directory for left
    over files
    """
+   if debug == 'on':
+      print "NOTICE: init_env_func()"
    l_archivedir = config.defaults()['l_archivedir']
    queues = generate_slave_list_func()
    try:
@@ -117,6 +119,8 @@ def check_config_func():
    """ 
    Let's make sure that our directories and executables exist 
    """
+   if debug == 'on':
+      print "NOTICE: check_config_func()"
    if protocol == 'file':
       pathvars = [l_archivedir,rsync_bin,pgdata,configfile]
    else:
@@ -132,7 +136,8 @@ def check_pgpid_func():
    """
    Checks to see if postgresql is running
    """
-
+   if debug == 'on':
+      print "NOTICE: check_pgpid_func()"
    pidfile = '%s/postmaster.pid' % (str(pgdata))
    try:
       check = os.stat(pidfile)
@@ -168,7 +173,8 @@ def flush_check_func():
    """
    Simple function to make sure we require input before flushing a system
    """
-
+   if debug == 'on':
+      print "NOTICE: flush_check_func()"
    print "\n\n"
    print "Warning! Flushing all logs will cause your slave to exit"
    print "Standby and start up. Please verify that this is exactly what you desire.\n\n"""
@@ -190,31 +196,40 @@ def list_queue_func():
    We only want to process archives for queues that have files, so we check
    and only return a queue/slave that has files to be shipped.
    """
+   if debug == 'on':
+      print "NOTICE: list_queue_func()"
    queue = generate_slave_list_func()
-   for slave in queue:
-      queuedir = l_archivedir + "/" + str(slave)
-      list_archives = os.listdir(queuedir)
-      if list_archives:
-         if debug == 'on':
-            print "Slave: " + slave + " " + str(list_archives)
-   return slave
+   if queue:
+      for slave in queue:
+         queuedir = l_archivedir + "/" + str(slave)
+         list_archives = os.listdir(queuedir)
+         if list_archives:
+            if debug == 'on':
+               print "Slave: " + slave + " " + str(list_archives)
+            print slave
+            return slave
+   else:
+      return 0
 
 def send_queue_func():
    """
    We are called before normal archive process in order to send queue files that have not been shipped yet.
    If we have to transfer and we error we return the slave that failed. 
    """
-   slave = list_queue_func()
    if debug == 'on':
-      print "NOTICE: processing " + slave
-   for queue in slave:
-      queue_dir = l_archivedir + "/" + str(slave)
-      queue_transfer =  """%s -azq --remove-source-files  -e "ssh %s" %s/ %s@%s:%s/""" % (str(rsync_bin), str(ssh_flags), str(queue_dir), str(user), str(slave), str(r_archivedir))
-      retval = system(queue_transfer)
+      print "NOTICE: send_queue_func()"
+   slave = list_queue_func()
+   if slave:
       if debug == 'on':
-         print queue_transfer
-      if retval:
-         return queue
+         print "NOTICE: processing " + slave
+      for queue in slave:
+         queue_dir = l_archivedir + "/" + str(slave)
+         queue_transfer =  """%s -azq --remove-source-files  -e "ssh %s" %s/ %s@%s:%s/""" % (str(rsync_bin), str(ssh_flags), str(queue_dir), str(user), str(slave), str(r_archivedir))
+         retval = system(queue_transfer)
+         if debug == 'on':
+            print queue_transfer
+         if retval:
+            return queue
 
 def archive_func():
    """
@@ -226,54 +241,69 @@ def archive_func():
    can not send files. The archiver then automatically queues all logs for
    those slaves which are not sending until they can send.
    """
+   if debug == 'on':
+      print "NOTICE: archive_func()"
    if protocol == 'rsync':
-      """ 
-      First we send the queue files (if any). If we can't we exit 
-      """
+      if debug == 'on':
+         print "NOTICE: protocol == rsync"
 
+      # First we send the queue files (if any). If we can't we exit 
       queue = send_queue_func()
-      if queue:
-         print "ERROR: Unable to send queued archived files, queueing"
-         retval = system("%s %d" % (str(notify_warning), retval))
-         slaves = generate_slave_list_func()
-         for host in slaves:
-            queue_dir = l_archive + "/" + str(host)
 
-            """ If the host returned is in the list, we automatically
-            archive to the queue.
-            """
+      if queue:
+         if debug == 'on':
+            print "NOTICE: queue = " + queue
+            print "ERROR: Unable to send queued archived files, queueing"
+         system("%s" % (str(notify_warning)))
+         slaves = generate_slave_list_func()
+         if debug == 'on':
+            print "NOTICE: slaves = generate_slave_list_func() " + str(slaves)
+         for host in slaves:
+            if debug == 'on':
+               print "NOTICE: " + host + " in " + str(slaves)
+
+            # If the host returned is in the list, we automatically
+            # archive to the queue.
 
             if host == queue:
+               if debug == on:
+                  "NOTICE: Saving archives to queue"
+               queue_dir = l_archivedir + "/" + str(host)
                queue_transfer = """%s %s %s""" % (str(rsync_bin), str(archivefile), str(queue_dir)) 
                retval = system(queue_transfer)
                if retval:
                   system("%s %d" % (str(notify_critical), retval))
                   exit(1)
 
-            """ If the host returned is not in the list, we attempt to
-            archive normally. If we can not, we archive to the queue. If we
-            can not archive to the queue, we exit critical.
-            """
+            # If the host returned is not in the list, we attempt to
+            # archive normally. If we can not, we archive to the queue. If we
+            # can not archive to the queue, we exit critical.
 
+      if debug == 'on':
+         print "NOTICE: Entering single file archive transfer"
+      for host in generate_slave_list_func():
+         if debug == 'on':
+            print "NOTICE: Archiving for: " + str(host)
+         rsync_transfer = """%s -zq -e "ssh %s" %s %s@%s:%s""" % (str(rsync_bin), str(ssh_flags), str(archivefile), str(user), str(host), str(r_archivedir))
+         if debug == 'on':
+            print "NOTICE: Shipping archive to: " + str(host)
+            print "NOTICE: Using: " + rsync_transfer
+         
+         retval = system("%s" % (rsync_transfer))
+         if retval:
+            queue_dir = l_archivedir + "/" + str(host)
+            queue_transfer = """%s %s %s""" % (str(rsync_bin), str(archivefile), str(queue_dir)) 
+            retval = system(queue_transfer)
+            if retval:
+               print "FATAL: Unabled to rsync_transfer or queue_transfer"
+               system("%s %d" % (str(notify_critical), retval))
+               exit(1)
             else:
-               rsync_transfer = """%s -zq -e "ssh %s" %s %s@%s:%s""" % (str(rsync_bin), str(ssh_flags), str(archivefile), str(user), str(slave), str(r_archivedir))
-               retval = system("%s" % (rsync_transfer))
-               if retval:
-                  queue_transfer = """%s %s %s""" % (str(rsync_bin), str(archivefile), str(queue_dir)) 
-                  retval = system(queue_transfer)
-                  if retval:
-                     print "FATAL: Unabled to rsync_transfer or queue_transfer"
-                     system("%s %d" % (str(notify_critical), retval))
-                     exit(1)
-                  else:
-                     retval = system("%s %d" % (str(notify_warning), retval))
-                     exit(0)
-
+               retval = system("%s %d" % (str(notify_warning), retval))
+               exit(0)
   
    if protocol == 'file':
-   """
-   If we are just archiving to files
-   """
+      #If we are just archiving to files
       if not push:
          if debug == 'on':
             print "FILE: %s" % (file_transfer)
@@ -310,42 +340,25 @@ def push_func():
                print "EXCEPTION: %s" % (str(e))
 
 
-# Before any actions, we check the config
-if not init:
-   check_config_func()
-
-# Some command line checking
-
-if flush:
-   if configfile == None:
-      parser.error("option -c is required")
-      print "\n"   
-
-if push:
-   if protocol != 'file':
-      parser.error("option -P requires a protocol of file")
-      print "\n"
-
-if debug == 'on':
-   print config.defaults().keys()
-   
 # set up our transfer commands
 
 if debug == 'on':
-   ssh_flags = "-vvv -o ConnectTimeout=%s -o StrictHostKeyChecking=no" % (str(timeout))
+   ssh_flags = "-o ConnectTimeout=%s -o StrictHostKeyChecking=no" % (str(timeout))
 else:
    ssh_flags = "-o ConnectTimeout=%s -o StrictHostKeyChecking=no" % (str(timeout))
 
-# If we are initializing the environment
-
+# Initialize
 if init:
    print "We are initializing queues, one moment.\n"
    init_env_func()
 else:
+   check_config_func()
    """ 
    A flush of the archives. We only do this if we are failing over
    """
    if flush:
+      if configfile == None:
+         parser.error("option -c is required")
       rsync_transfer = """%s -z %s/pg_xlog/* -e "ssh %s"  %s@%s:%s""" % (str(rsync_bin), str(pgdata), str(ssh_flags), str(user), str(slave), str(r_archivedir))
       file_transfer = "rsync -au %s/pg_xlog/* %s" % (str(pgdata),str(l_archivedir))
       flush_check_func()
@@ -357,10 +370,12 @@ else:
       """
       If we aren't performing a flush we are just archiving
       """
+   elif push:
+      if protocol != 'file':
+         parser.error("option -P requires a protocol of file")
+      push_transfer = """%s -azv --remove-source-files  -e "ssh %s" %s/* %s@%s:%s/""" % (str(rsync_bin), str(ssh_flags), str(l_archivedir), str(user), str(slave), str(r_archivedir))         
+      push_func()
    else:
-      #file_transfer = "rsync %s/%s %s" % (str(pgdata),str(archivefile),str(l_archivedir))
-      if push:
-         push_transfer = """%s -azv --remove-source-files  -e "ssh %s" %s/* %s@%s:%s/""" % (str(rsync_bin), str(ssh_flags), str(l_archivedir), str(user), str(slave), str(r_archivedir))         
-         push_func()
-      else:
-         archive_func()
+      if debug == 'on':
+         print "NOTICE: Performing standard archive"
+      archive_func()
