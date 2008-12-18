@@ -68,6 +68,7 @@ notify_warning = config.defaults()['notify_warning']
 notify_critical = config.defaults()['notify_critical']
 debug = config.defaults()['debug']
 pgdata = config.defaults()['pgdata']
+rsync_version = config.defaults()['rsync_version']
 
 """
 If we are not online, exit immediately
@@ -217,7 +218,11 @@ def send_queue_func():
          print "NOTICE: processing " + slaves
       for host in slaves:
          queue_dir = l_archivedir + "/" + str(host)
-         queue_transfer =  """%s -azq --remove-source-files  -e "ssh %s" %s/ %s@%s:%s/""" % (str(rsync_bin), str(ssh_flags), str(queue_dir), str(user), str(host), str(r_archivedir))
+         if rsync_version = 2:
+            source_or_sent = "--remove-sent-files"
+         else:
+            source_or_sent = "--remove-source-files"
+         queue_transfer =  """%s -azq %s -e "ssh %s" %s/ %s@%s:%s/""" % (str(rsync_bin), str(source_or_sent) str(ssh_flags), str(queue_dir), str(user), str(host), str(r_archivedir))
          retval = system(queue_transfer)
          if debug == 'on':
             print queue_transfer
