@@ -222,7 +222,7 @@ def send_queue_func():
             source_or_sent = "--remove-sent-files"
          else:
             source_or_sent = "--remove-source-files"
-         queue_transfer =  """%s -azq %s -e "ssh %s" %s/ %s@%s:%s/""" % (str(rsync_bin), str(source_or_sent) str(ssh_flags), str(queue_dir), str(user), str(host), str(r_archivedir))
+         queue_transfer =  """%s -azq %s -e "ssh %s" %s/ %s@%s:%s/""" % (str(rsync_bin), str(source_or_sent), str(ssh_flags), str(queue_dir), str(user), str(host), str(r_archivedir))
          retval = system(queue_transfer)
          if debug == 'on':
             print queue_transfer
