@@ -15,9 +15,6 @@ l_archivedir: /var/lib/postgresql/archive
 ; where is rsync				
 rsync_bin: /usr/bin/rsync			
 
-; can be scp | file | rsync
-protocol: rsync
-
 ; IP of slave					
 slaves: 10.1.2.5,10.1.3.5
 

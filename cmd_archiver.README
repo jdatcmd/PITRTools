@@ -5,11 +5,9 @@ push mechanism  for updating archives.
 
 Options:
   -h, --help            show this help message and exit
-  -F FILE, --file=FILE  Archive file
   -C FILE, --config=FILE
                         the name of the archiver config file
   -f, --flush           Flush all remaining archives to slave
-  -P, --push		Push archives to a remote host
 
 Dependencies:
 
@@ -88,12 +86,6 @@ rsync_bin: /usr/bin/rsync
 
 Must point to the actual binary of rsync. We use rsync over ssh, so don't
 bother with an rsync server.
-
-; can be file | rsync
-protocol: rsync
-
-Rsync is absolutely preferred due to its error checking and guarantee of 
-delivery.
 
 ; IP of slave					
 slaves: 192.168.3.1 or slaves: 192.168.3.1,192.168.4.1
