@@ -222,7 +222,7 @@ def send_queue_func():
          if debug == 'on':
             print queue_transfer
          if retval:
-            return queue
+            return host
 
 def archive_func():
    """
