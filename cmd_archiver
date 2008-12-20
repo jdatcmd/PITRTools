@@ -218,6 +218,7 @@ def send_queue_func():
          print "NOTICE: processing " + slaves
       for host in slaves:
          queue_dir = l_archivedir + "/" + str(host)
+         # To deal with old versions of rsync
          if rsync_version == '2':
             source_or_sent = "--remove-sent-files"
          else:
