@@ -311,7 +311,7 @@ def dbinit_func():
 # there is a possibility of a non 0 exit status even when successful
 
 def base_backup_func():
-   retval = os.system("rm -f %s/%s" % ((archivedir),str('*')))
+   retval = os.system("rm -rf %s/%s" % ((archivedir),str('*')))
    if retval:
       print "Unable to remove old archives"
       exit(1)
