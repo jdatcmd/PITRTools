@@ -22,7 +22,7 @@ rsync_bin: /usr/bin/rsync
 rsync_version = 2
 
 ; IP of slave					
-slaves: 292.168.1.201,292.168.1.202
+slaves: 192.168.1.201,192.168.1.202
 
 ; the user that will be using scp				
 user: postgres					

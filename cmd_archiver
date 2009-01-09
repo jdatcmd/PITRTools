@@ -194,16 +194,20 @@ def list_queue_func():
    """
    if debug == 'on':
       print "NOTICE: list_queue_func()"
+      # Empty host array
+   hosts = []
+   # Loop through the list of slaves
    for host in generate_slave_list_func():
       queuedir = l_archivedir + "/" + str(host)
       list_archives = os.listdir(queuedir)
+      # If there is an archive directory, then we're good.
       if list_archives:
+         # add to list of hosts
+         hosts.append(host)
          if debug == 'on':
-            for host in queue:
+            for host in generate_slave_list_func():
                print "NOTICE: SLAVE: " + host + " " + str(list_archives)
-      return host
-   else:
-      return 0
+   return hosts
 
 def send_queue_func():
    """
