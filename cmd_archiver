@@ -268,7 +268,7 @@ def archive_func():
          # archive to the queue.
 
          if host == queue:
-            if debug == on:
+            if debug == 'on':
                "NOTICE: Saving archives to queue"
             queue_dir = l_archivedir + "/" + str(host)
             queue_transfer = """%s %s %s""" % (str(rsync_bin), str(archivefile), str(queue_dir)) 
