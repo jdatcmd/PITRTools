@@ -14,6 +14,9 @@ numarchives: 10
 ; absolute path to ssh
 ssh: /usr/bin/ssh		
 
+; This is the ssh port that your openssh server is listening on, on the the master/archiver
+ssh_port: 22
+
 ; absolute path to rsync
 rsync: /usr/bin/rsync
 

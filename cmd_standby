@@ -95,6 +95,7 @@ pgconf = config.defaults()['postgresql_conf']
 hbaconf = config.defaults()['pg_hba_conf']
 action_failover = config.defaults()['action_failover']
 numarchives = config.defaults()['numarchives']
+ssh_port = config.defaults()['ssh_port']
 
 # Validate the command line
 
@@ -174,7 +175,7 @@ def notify_critical_func():
 # Configure some basics
 
 if debug == "on":
-   ssh_flags = "-vvv -o ConnectTimeout=%s -o StrictHostKeyChecking=no" % (str(ssh_timeout))
+   ssh_flags = "-vvv -o ConnectTimeout=%s -o StrictHostKeyChecking=no -p %s" % (str(ssh_timeout),(ssh_port))
    rsync_flags = "-avzl --delete --stats --exclude=backup_label"
    if pgversion == '8.2':
      pg_standby_flags = "-s5 -w0 -d -c %%f %%p -k%s" % (float(numarchives))

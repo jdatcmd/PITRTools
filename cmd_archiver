@@ -70,6 +70,7 @@ debug = config.defaults()['debug']
 pgdata = config.defaults()['pgdata']
 rsync_version = config.defaults()['rsync_version']
 ssh_debug = config.defaults()['ssh_debug']
+ssh_port = config.defaults()['ssh_port']
 
 """
 If we are not online, exit immediately
@@ -328,9 +329,9 @@ def archive_func():
 # set up our transfer commands
 
 if ssh_debug == 'on':
-   ssh_flags = "-vvv -o ConnectTimeout=%s -o StrictHostKeyChecking=no" % (str(timeout))
+   ssh_flags = "-vvv -o ConnectTimeout=%s -o StrictHostKeyChecking=no -p %s" % (str(timeout), (ssh_port))
 else:
-   ssh_flags = "-o ConnectTimeout=%s -o StrictHostKeyChecking=no" % (str(timeout))
+   ssh_flags = "-o ConnectTimeout=%s -o StrictHostKeyChecking=no -p %s" % (str(timeout),(ssh_port))
 
 # Actually run
 if init:

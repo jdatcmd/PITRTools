@@ -21,6 +21,10 @@ rsync_bin: /usr/bin/rsync
 
 rsync_version = 2
 
+; This is the port your openssh server is listening on, on the slave/standby
+
+ssh_port: 22
+
 ; IP of slave					
 slaves: 192.168.1.201,192.168.1.202
 
