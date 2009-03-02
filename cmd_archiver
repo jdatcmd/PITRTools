@@ -328,10 +328,11 @@ def archive_func():
 
 # set up our transfer commands
 
+ssh_flags = "-o ConnectTimeout=%s -o StrictHostKeyChecking=no -p %s" % (str(timeout),(ssh_port))
 if ssh_debug == 'on':
-   ssh_flags = "-vvv -o ConnectTimeout=%s -o StrictHostKeyChecking=no -p %s" % (str(timeout), (ssh_port))
-else:
-   ssh_flags = "-o ConnectTimeout=%s -o StrictHostKeyChecking=no -p %s" % (str(timeout),(ssh_port))
+   ssh_flags += " -vvv"
+
+print ssh_flags
 
 # Actually run
 if init:
@@ -341,4 +342,4 @@ else:
    check_config_func()
    if debug == 'on':
       print "NOTICE: Performing standard archive"
-      archive_func()
+   archive_func()

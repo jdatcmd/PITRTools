@@ -47,4 +47,4 @@ notify_critical: echo CRITICAL
 debug: on
 
 ; if you want ssh debug (warning noisy)
-ssh_debug: off
+ssh_debug: on
