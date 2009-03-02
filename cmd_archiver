@@ -332,8 +332,6 @@ ssh_flags = "-o ConnectTimeout=%s -o StrictHostKeyChecking=no -p %s" % (str(time
 if ssh_debug == 'on':
    ssh_flags += " -vvv"
 
-print ssh_flags
-
 # Actually run
 if init:
    print "We are initializing queues, one moment.\n"
