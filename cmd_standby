@@ -212,7 +212,7 @@ if failover == '999' and not recovertotime:
 elif failover == '999' and recovertotime:
    recovery_string = """restore_command = 'cp %s/%%f "%%p"'\nrecovery_target_time = '%s'""" % (str(archivedir),str(recovertotime)) 
 else:
-   recovery_string = """restore_command = '%s  %s %s' """ % (str(pg_standby), str(archivedir), str(pg_standby_flags))
+   recovery_string = """restore_command = '%s  %s/queue %s' """ % (str(pg_standby), str(archivedir), str(pg_standby_flags))
 
 # Check the master for being alive
 
@@ -306,13 +306,22 @@ def dbinit_func():
             print "Make sure that %s has the ability to create the directory: " % (str(user))
             print "%s" % ((str(row)))
             exit(1)
+      try:
+         queue_dir = archivedir + "/" + "queue"
+         os.makedirs(%s,0700 % str(queue_dir))
+      except OSError, e:
+            print "ERROR: %s" % (str(e))
+            print "HINT: You may have permission problems"
+            print "Make sure that %s has the ability to create the directory: " % (str(user))
+            print "%s" % ((str(queue_dir)))
+            exit(1):
 
 
 # Takes a base backup of master. This function is tricky because
 # there is a possibility of a non 0 exit status even when successful
 
 def base_backup_func():
-   retval = os.system("rm -rf %s/%s" % ((archivedir),str('*')))
+   retval = os.system("rm -f %s/%s" % ((archivedir),str('*')))
    if retval:
       print "Unable to remove old archives"
       exit(1)
@@ -418,6 +427,8 @@ def failover_action_func():
          notify_critical_func()     
          exit(1)
       else:
+         print "NOTICE: System statistics do not replicate in standby mode"
+         print "HINT: Execute a system wide ANALYZE"
          exit(0)
  
 # Before we do anything, let's check the config and command line
